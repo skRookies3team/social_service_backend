@@ -3,7 +3,7 @@ package com.example.petlog.service;
 import com.example.petlog.dto.request.PetRequest;
 import com.example.petlog.dto.response.PetResponse;
 
-public interface PetService {
+public interface dService {
 
     PetResponse.CreatePetDto createPet(Long userNum, PetRequest.CreatePetDto request);
 }

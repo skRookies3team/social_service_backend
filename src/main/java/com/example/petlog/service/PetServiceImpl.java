@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class PetServiceImpl implements PetService {
+public class PetServiceImpl implements dService {
 
     private final UserRepository userRepository;
     private final PetRepository petRepository;

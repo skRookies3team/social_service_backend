@@ -27,7 +27,9 @@ public enum ErrorCode {
     //펫 관련
     PET_NAME_DUPLICATE("PET_002","중복된 이름입니다.", HttpStatus.BAD_REQUEST),
 
-
+    //피드
+    FEED_NOT_FOUND("F001", "피드를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    FEED_UNAUTHORIZED("F002", "피드에 대한 권한이 없습니다.", HttpStatus.FORBIDDEN),
 
     // 서버 오류 (50X)
     INTERNAL_SERVER_ERROR("SERVER_001", "서버 내부 오류가 발생했습니다", HttpStatus.INTERNAL_SERVER_ERROR),

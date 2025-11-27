@@ -2,23 +2,18 @@ package com.example.petlog.service;
 
 import com.example.petlog.dto.request.UserRequest;
 import com.example.petlog.dto.response.UserResponse;
-import com.example.petlog.entity.Pet;
-import com.example.petlog.entity.Status;
 import com.example.petlog.entity.User;
 import com.example.petlog.entity.UserType;
 import com.example.petlog.exception.BusinessException;
 import com.example.petlog.exception.ErrorCode;
-import com.example.petlog.repository.PetRepository;
 import com.example.petlog.repository.UserRepository;
 import com.example.petlog.security.jwt.UserInfoDetails;
-import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.core.env.Environment;
@@ -33,7 +28,7 @@ import java.util.Date;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-    private final PetService petService;
+    private final dService petService;
     private final BCryptPasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final Environment env;
