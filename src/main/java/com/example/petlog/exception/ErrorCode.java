@@ -25,9 +25,10 @@ public enum ErrorCode {
     USER_ID_DUPLICATE("USER_002","중복된 아이디입니다.", HttpStatus.BAD_REQUEST),
     USER_NAME_DUPLICATE("USER_002","중복된 이름입니다.", HttpStatus.BAD_REQUEST),
     //펫 관련
+    PET_NOT_FOUND("PET_001", "반려동물을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     PET_NAME_DUPLICATE("PET_002","중복된 이름입니다.", HttpStatus.BAD_REQUEST),
 
-    //피드
+    //피드 관련
     FEED_NOT_FOUND("F001", "피드를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     FEED_UNAUTHORIZED("F002", "피드에 대한 권한이 없습니다.", HttpStatus.FORBIDDEN),
 
