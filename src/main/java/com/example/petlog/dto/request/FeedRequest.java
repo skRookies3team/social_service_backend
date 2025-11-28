@@ -26,8 +26,8 @@ public class FeedRequest {
         @Schema(description = "피드 내용", example = "오늘 산책 너무 즐거웠어!")
         private String content;
 
-        @Schema(description = "이미지 URL", example = "https://example.com/image.jpg")
-        private String imageUrl;
+        @Schema(description = "위치 정보", example = "서울숲")
+        private String location;
     }
 
     // 피드 수정 요청 DTO

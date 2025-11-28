@@ -7,8 +7,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URI;
 import java.util.List;
@@ -22,10 +24,13 @@ public class FeedController {
     private final FeedService feedService;
 
     // 피드 작성 API
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "피드 작성")
-    public ResponseEntity<Long> createFeed(@Valid @RequestBody FeedRequest.CreateFeedDto request) {
-        Long feedId = feedService.createFeed(request);
+    public ResponseEntity<Long> createFeed(
+            @RequestPart(value = "file", required = false) MultipartFile file,
+            @RequestPart(value = "request") @Valid FeedRequest.CreateFeedDto request
+    ) {
+        Long feedId = feedService.createFeed(request, file);
         // 생성된 리소스의 위치(URI)와 ID를 함께 반환
         return ResponseEntity.created(URI.create("/api/feeds/" + feedId)).body(feedId);
     }
