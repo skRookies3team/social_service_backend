@@ -26,20 +26,23 @@ public class FeedResponse {
         @Schema(description = "피드 내용")
         private String content;
 
-        @Schema(description = "이미지 URL")
+        @Schema(description = "이미지 URL (Base64 문자열)")
         private String imageUrl;
 
         @Schema(description = "작성일시")
         private LocalDateTime createdAt;
 
-        // MSA 환경에서는 닉네임과 펫 이름을 외부에서 받아와야 하므로 파라미터 추가
-        public static GetFeedDto of(Feed feed, String writerNickname, String petName) {
+        @Schema(description = "위치정보")
+        private String location;
+
+        public static GetFeedDto of(Feed feed, String writerNickname, String petName, String imageBase64) {
             return GetFeedDto.builder()
                     .feedId(feed.getId())
                     .writerNickname(writerNickname)
                     .petName(petName)
                     .content(feed.getContent())
-                    .imageUrl(feed.getImageUrl())
+                    .location(feed.getLocation())
+                    .imageUrl(imageBase64) //
                     .createdAt(feed.getCreatedAt())
                     .build();
         }

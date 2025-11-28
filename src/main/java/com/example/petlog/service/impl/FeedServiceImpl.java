@@ -10,19 +10,14 @@ import com.example.petlog.exception.EntityNotFoundException;
 import com.example.petlog.exception.ErrorCode;
 import com.example.petlog.repository.FeedRepository;
 import com.example.petlog.service.FeedService;
+import com.example.petlog.service.ImageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,41 +30,26 @@ public class FeedServiceImpl implements FeedService {
     private final UserClient userClient;
     private final PetClient petClient;
 
-    private final String uploadDir = System.getProperty("user.dir") + "/uploads/";
+    // 이미지 처리 로직을 담당하는 서비스 주입 (LocalImageService or S3ImageService)
+    private final ImageService imageService;
 
     @Override
     @Transactional
     public Long createFeed(FeedRequest.CreateFeedDto request, MultipartFile file) {
-        String imageUrl = null;
+        String filename = null;
+
+        // 1. 이미지 업로드 (ImageService에 위임)
         if (file != null && !file.isEmpty()) {
-            try {
-                // uploads 폴더가 없으면 생성
-                File dir = new File(uploadDir);
-                if (!dir.exists()) {
-                    dir.mkdirs();
-                }
-
-                String originalFilename = file.getOriginalFilename();
-                String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-                String savedFilename = UUID.randomUUID().toString() + extension;
-
-                Path path = Paths.get(uploadDir + savedFilename);
-                Files.copy(file.getInputStream(), path);
-
-                imageUrl = "/api/images/view/" + savedFilename;
-
-            } catch (IOException e) {
-                log.error("File upload failed", e);
-                throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
-            }
+            filename = imageService.upload(file);
         }
 
+        // 2. 피드 엔티티 생성 및 저장 (DB에는 파일명만 저장)
         Feed feed = Feed.builder()
                 .userId(request.getUserId())
                 .petId(request.getPetId())
                 .content(request.getContent())
                 .location(request.getLocation())
-                .imageUrl(imageUrl) // 저장된 이미지 URL
+                .imageUrl(filename)
                 .build();
 
         return feedRepository.save(feed).getId();
@@ -77,8 +57,7 @@ public class FeedServiceImpl implements FeedService {
 
     @Override
     public List<FeedResponse.GetFeedDto> getAllFeeds() {
-        List<Feed> feeds = feedRepository.findAllByOrderByCreatedAtDesc();
-        return feeds.stream()
+        return feedRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
@@ -100,7 +79,8 @@ public class FeedServiceImpl implements FeedService {
             throw new BusinessException(ErrorCode.FEED_UNAUTHORIZED);
         }
 
-        // 이미지 파일 수정 로직은 이번 요구사항에 없으므로 기존 imageUrl과 location만 업데이트
+        // 이미지 수정 로직은 현재 요구사항에 없으므로 기존 이미지 유지
+        // 필요 시 request.getImageUrl() 대신 파일 업로드 로직 추가 가능
         feed.updateFeed(request.getContent(), request.getImageUrl(), request.getLocation());
     }
 
@@ -113,29 +93,41 @@ public class FeedServiceImpl implements FeedService {
         if (!feed.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FEED_UNAUTHORIZED);
         }
-        // 실제 파일 삭제 로직 추가 (선택)
-        // if (feed.getImageUrl() != null) { ... }
         feedRepository.delete(feed);
     }
 
+    // 엔티티 -> DTO 변환 (이미지 URL 생성 포함)
     private FeedResponse.GetFeedDto convertToDto(Feed feed) {
         String nickname = "Unknown";
         String petName = null;
 
+        // 1. User Service 통신
         try {
             nickname = userClient.getNickname(feed.getUserId());
         } catch (Exception e) {
-            log.error("User Service 호출 실패: {}", e.getMessage());
+            log.warn("User Service 호출 실패: {}", e.getMessage());
         }
 
+        // 2. Pet Service 통신
         if (feed.getPetId() != null) {
             try {
                 petName = petClient.getPetName(feed.getPetId());
             } catch (Exception e) {
-                log.error("Pet Service 호출 실패: {}", e.getMessage());
+                log.warn("Pet Service 호출 실패: {}", e.getMessage());
             }
         }
 
-        return FeedResponse.GetFeedDto.of(feed, nickname, petName);
+        // 3. 이미지 URL 생성 (ImageService에 위임)
+        String fullImageUrl = null;
+        if (feed.getImageUrl() != null) {
+            if (feed.getImageUrl().startsWith("http")) {
+                fullImageUrl = feed.getImageUrl(); // 기존 테스트 데이터 호환
+            } else {
+                // Local일 땐 "/images/파일.jpg", S3일 땐 "https://s3.../파일.jpg" 반환
+                fullImageUrl = imageService.getImageUrl(feed.getImageUrl());
+            }
+        }
+
+        return FeedResponse.GetFeedDto.of(feed, nickname, petName, fullImageUrl);
     }
 }
