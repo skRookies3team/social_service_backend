@@ -6,10 +6,8 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-// 피드 관련 응답 데이터를 담는 클래스
 public class FeedResponse {
 
-    // 단일 피드 조회 응답 DTO
     @Getter
     @Setter
     @NoArgsConstructor
@@ -34,12 +32,12 @@ public class FeedResponse {
         @Schema(description = "작성일시")
         private LocalDateTime createdAt;
 
-        // 엔티티를 DTO로 변환하는 정적 메서드
-        public static GetFeedDto fromEntity(Feed feed) {
+        // MSA 환경에서는 닉네임과 펫 이름을 외부에서 받아와야 하므로 파라미터 추가
+        public static GetFeedDto of(Feed feed, String writerNickname, String petName) {
             return GetFeedDto.builder()
                     .feedId(feed.getId())
-                    .writerNickname(feed.getUser().getNickname())
-                    .petName(feed.getPet() != null ? feed.getPet().getName() : null)
+                    .writerNickname(writerNickname)
+                    .petName(petName)
                     .content(feed.getContent())
                     .imageUrl(feed.getImageUrl())
                     .createdAt(feed.getCreatedAt())

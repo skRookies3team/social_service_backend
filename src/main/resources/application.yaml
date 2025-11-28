@@ -1,8 +1,7 @@
 spring:
   application:
-    name: petlog
+    name: social-service
   datasource:
-    # 환경변수에서 주입받도록 설정
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
@@ -16,6 +15,25 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
-server:
-  port: 8080
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connectTimeout: 5000
+            readTimeout: 5000
 
+server:
+  port: 8083
+  shutdown: graceful
+
+# Swagger에서 사용할 Gateway 주소 변수는 남겨둠 (Java Config에서 주입받기 위함)
+openapi:
+  service:
+    url: ${API_GATEWAY}
+
+external:
+  user-service:
+    url: ${USER_SERVICE_URL}
+  pet-service:
+    url: ${PET_SERVICE_URL}

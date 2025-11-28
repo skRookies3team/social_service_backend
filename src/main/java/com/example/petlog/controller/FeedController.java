@@ -49,9 +49,8 @@ public class FeedController {
     @Operation(summary = "피드 수정")
     public ResponseEntity<Void> updateFeed(
             @PathVariable Long feedId,
-            @Valid @RequestBody FeedRequest.UpdateFeedDto request,
-            @RequestParam Long userId) { // 임시로 쿼리 파라미터로 본인 확인 (추후 보안 적용 예정)
-        feedService.updateFeed(feedId, request, userId);
+            @Valid @RequestBody FeedRequest.UpdateFeedDto request) { // 임시로 쿼리 파라미터로 본인 확인 (추후 보안 적용 예정)
+        feedService.updateFeed(feedId, request, request.getUserId());
         return ResponseEntity.ok().build();
     }
 

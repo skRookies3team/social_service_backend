@@ -11,11 +11,10 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
-// 피드 테이블과 매핑되는 엔티티 클래스
 @Entity
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED) // 무분별한 객체 생성을 막기 위해 protected 사용
-@EntityListeners(AuditingEntityListener.class) // 생성일, 수정일 자동 관리를 위한 리스너
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EntityListeners(AuditingEntityListener.class)
 @Table(name = "feeds")
 public class Feed {
 
@@ -23,22 +22,19 @@ public class Feed {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 피드 내용은 텍스트 길이가 길 수 있으므로 TEXT 타입으로 정의
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
     @Column(name = "image_url")
     private String imageUrl;
 
-    // 작성자 정보 (User 엔티티와 다대일 관계)
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    // MSA 전환: 객체 참조(User) 대신 ID(Long) 저장
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
-    // 관련 반려동물 정보 (Pet 엔티티와 다대일 관계, 선택사항이므로 null 가능)
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "pet_id")
-    private Pet pet;
+    // MSA 전환: 객체 참조(Pet) 대신 ID(Long) 저장
+    @Column(name = "pet_id")
+    private Long petId;
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)
@@ -49,14 +45,13 @@ public class Feed {
     private LocalDateTime updatedAt;
 
     @Builder
-    public Feed(String content, String imageUrl, User user, Pet pet) {
+    public Feed(String content, String imageUrl, Long userId, Long petId) {
         this.content = content;
         this.imageUrl = imageUrl;
-        this.user = user;
-        this.pet = pet;
+        this.userId = userId;
+        this.petId = petId;
     }
 
-    // 피드 수정 메서드 (내용과 이미지만 변경 가능)
     public void updateFeed(String content, String imageUrl) {
         this.content = content;
         this.imageUrl = imageUrl;

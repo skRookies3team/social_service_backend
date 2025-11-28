@@ -35,11 +35,19 @@ public class FeedRequest {
     @Setter
     @NoArgsConstructor
     public static class UpdateFeedDto {
+
+        @NotNull(message = "사용자 ID는 필수입니다.") // 추가
+        @Schema(description = "작성자 ID (본인 확인용)", example = "1")
+        private Long userId;
+
         @NotBlank(message = "피드 내용은 필수입니다.")
         @Schema(description = "수정할 피드 내용", example = "내용 수정됨")
         private String content;
 
         @Schema(description = "수정할 이미지 URL", example = "https://example.com/new_image.jpg")
         private String imageUrl;
+
+        @Schema(description = "위치 정보", example = "부산 해운대")
+        private String location;
     }
 }
