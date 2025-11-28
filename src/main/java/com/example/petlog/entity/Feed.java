@@ -28,6 +28,9 @@ public class Feed {
     @Column(name = "image_url")
     private String imageUrl;
 
+    @Column
+    private String location;
+
     // MSA 전환: 객체 참조(User) 대신 ID(Long) 저장
     @Column(name = "user_id", nullable = false)
     private Long userId;
@@ -45,15 +48,17 @@ public class Feed {
     private LocalDateTime updatedAt;
 
     @Builder
-    public Feed(String content, String imageUrl, Long userId, Long petId) {
+    public Feed(String content, String imageUrl, String location, Long userId, Long petId) {
         this.content = content;
         this.imageUrl = imageUrl;
+        this.location = location;
         this.userId = userId;
         this.petId = petId;
     }
 
-    public void updateFeed(String content, String imageUrl) {
+    public void updateFeed(String content, String imageUrl, String location) {
         this.content = content;
         this.imageUrl = imageUrl;
+        this.location = location;
     }
 }

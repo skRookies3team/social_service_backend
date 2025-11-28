@@ -2,12 +2,13 @@ package com.example.petlog.service;
 
 import com.example.petlog.dto.request.FeedRequest;
 import com.example.petlog.dto.response.FeedResponse;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 public interface FeedService {
     // 피드 작성
-    Long createFeed(FeedRequest.CreateFeedDto request);
+    Long createFeed(FeedRequest.CreateFeedDto request, MultipartFile file);
 
     // 전체 피드 조회
     List<FeedResponse.GetFeedDto> getAllFeeds();

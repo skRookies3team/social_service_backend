@@ -1,4 +1,4 @@
-package com.example.petlog.service.impl; // 패키지 경로 주의
+package com.example.petlog.service.impl;
 
 import com.example.petlog.client.PetClient;
 import com.example.petlog.client.UserClient;
@@ -14,8 +14,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,23 +32,44 @@ import java.util.stream.Collectors;
 public class FeedServiceImpl implements FeedService {
 
     private final FeedRepository feedRepository;
-    // Feign Clients 주입
     private final UserClient userClient;
     private final PetClient petClient;
 
+    private final String uploadDir = System.getProperty("user.dir") + "/uploads/";
+
     @Override
     @Transactional
-    public Long createFeed(FeedRequest.CreateFeedDto request) {
-        // 1. 외부 서비스 통신을 통한 검증 (선택적)
-        // try-catch 등으로 외부 서비스 장애 시 처리 정책 필요
-        // if (!userClient.checkUserExists(request.getUserId())) { ... }
+    public Long createFeed(FeedRequest.CreateFeedDto request, MultipartFile file) {
+        String imageUrl = null;
+        if (file != null && !file.isEmpty()) {
+            try {
+                // uploads 폴더가 없으면 생성
+                File dir = new File(uploadDir);
+                if (!dir.exists()) {
+                    dir.mkdirs();
+                }
 
-        // 2. 엔티티 생성 (ID만 저장)
+                String originalFilename = file.getOriginalFilename();
+                String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+                String savedFilename = UUID.randomUUID().toString() + extension;
+
+                Path path = Paths.get(uploadDir + savedFilename);
+                Files.copy(file.getInputStream(), path);
+
+                imageUrl = "/api/images/view/" + savedFilename;
+
+            } catch (IOException e) {
+                log.error("File upload failed", e);
+                throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
+            }
+        }
+
         Feed feed = Feed.builder()
                 .userId(request.getUserId())
-                .petId(request.getPetId()) // null 가능
+                .petId(request.getPetId())
                 .content(request.getContent())
-                .imageUrl(request.getImageUrl())
+                .location(request.getLocation())
+                .imageUrl(imageUrl) // 저장된 이미지 URL
                 .build();
 
         return feedRepository.save(feed).getId();
@@ -50,8 +78,6 @@ public class FeedServiceImpl implements FeedService {
     @Override
     public List<FeedResponse.GetFeedDto> getAllFeeds() {
         List<Feed> feeds = feedRepository.findAllByOrderByCreatedAtDesc();
-
-        // N+1 문제 방지를 위해 실무에서는 ID 목록으로 일괄 조회 API 등을 활용 권장
         return feeds.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
@@ -60,8 +86,7 @@ public class FeedServiceImpl implements FeedService {
     @Override
     public FeedResponse.GetFeedDto getFeed(Long feedId) {
         Feed feed = feedRepository.findById(feedId)
-                .orElseThrow(() -> new EntityNotFoundException("Feed", feedId)); // 수정된 생성자 활용
-
+                .orElseThrow(() -> new EntityNotFoundException("Feed", feedId));
         return convertToDto(feed);
     }
 
@@ -75,7 +100,8 @@ public class FeedServiceImpl implements FeedService {
             throw new BusinessException(ErrorCode.FEED_UNAUTHORIZED);
         }
 
-        feed.updateFeed(request.getContent(), request.getImageUrl());
+        // 이미지 파일 수정 로직은 이번 요구사항에 없으므로 기존 imageUrl과 location만 업데이트
+        feed.updateFeed(request.getContent(), request.getImageUrl(), request.getLocation());
     }
 
     @Override
@@ -87,11 +113,11 @@ public class FeedServiceImpl implements FeedService {
         if (!feed.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FEED_UNAUTHORIZED);
         }
-
+        // 실제 파일 삭제 로직 추가 (선택)
+        // if (feed.getImageUrl() != null) { ... }
         feedRepository.delete(feed);
     }
 
-    // 엔티티 -> DTO 변환 (외부 데이터 조합)
     private FeedResponse.GetFeedDto convertToDto(Feed feed) {
         String nickname = "Unknown";
         String petName = null;
@@ -100,7 +126,6 @@ public class FeedServiceImpl implements FeedService {
             nickname = userClient.getNickname(feed.getUserId());
         } catch (Exception e) {
             log.error("User Service 호출 실패: {}", e.getMessage());
-            // Fallback 로직 또는 에러 처리
         }
 
         if (feed.getPetId() != null) {
