@@ -4,6 +4,7 @@ import com.example.petlog.dto.request.FeedRequest;
 import com.example.petlog.dto.response.FeedResponse;
 import com.example.petlog.service.FeedService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -37,28 +38,39 @@ public class FeedController {
 
     // 전체 피드 조회 API
     @GetMapping
-    @Operation(summary = "전체 피드 조회")
-    public ResponseEntity<List<FeedResponse.GetFeedDto>> getAllFeeds() {
-        return ResponseEntity.ok(feedService.getAllFeeds());
+    @Operation(summary = "전체 피드 조회", description = "최신순으로 피드 목록을 조회합니다. 로그인한 경우 좋아요 상태가 반영됩니다.")
+    public ResponseEntity<List<FeedResponse.GetFeedDto>> getAllFeeds(
+            @Parameter(description = "로그인한 유저 ID (좋아요 여부 확인용, 비로그인 시 null)")
+            @RequestParam(required = false) Long userId
+    ) {
+        return ResponseEntity.ok(feedService.getAllFeeds(userId));
     }
 
     // 피드 상세 조회 API
     @GetMapping("/{feedId}")
-    @Operation(summary = "피드 상세 조회")
-    public ResponseEntity<FeedResponse.GetFeedDto> getFeed(@PathVariable Long feedId) {
-        return ResponseEntity.ok(feedService.getFeed(feedId));
+    @Operation(summary = "피드 상세 조회", description = "특정 피드의 상세 정보를 조회합니다.")
+    public ResponseEntity<FeedResponse.GetFeedDto> getFeed(
+            @Parameter(description = "피드 ID", required = true)
+            @PathVariable Long feedId,
+
+            @Parameter(description = "로그인한 유저 ID (좋아요 여부 확인용, 비로그인 시 null)")
+            @RequestParam(required = false) Long userId
+    ) {
+        return ResponseEntity.ok(feedService.getFeed(feedId, userId));
     }
 
     // 피드 수정 API
-    @PutMapping("/{feedId}")
-    @Operation(summary = "피드 수정")
-    public ResponseEntity<Void> updateFeed(
+    @GetMapping("/{feedId}")
+    @Operation(summary = "피드 상세 조회", description = "특정 피드의 상세 정보를 조회합니다.")
+    public ResponseEntity<FeedResponse.GetFeedDto> getFeed(
+            @Parameter(description = "피드 ID", required = true)
             @PathVariable Long feedId,
-            @Valid @RequestBody FeedRequest.UpdateFeedDto request) { // 임시로 쿼리 파라미터로 본인 확인 (추후 보안 적용 예정)
-        feedService.updateFeed(feedId, request, request.getUserId());
-        return ResponseEntity.ok().build();
-    }
 
+            @Parameter(description = "로그인한 유저 ID (좋아요 여부 확인용, 비로그인 시 null)")
+            @RequestParam(required = false) Long userId
+    ) {
+        return ResponseEntity.ok(feedService.getFeed(feedId, userId));
+    }
     // 피드 삭제 API
     @DeleteMapping("/{feedId}")
     @Operation(summary = "피드 삭제")
