@@ -29,20 +29,28 @@ public class FeedResponse {
         @Schema(description = "이미지 URL (Base64 문자열)")
         private String imageUrl;
 
+        @Schema(description = "좋아요수")
+        private long likeCount;
+
+        @Schema(description = "내가 좋아요를 눌렀는지 여부 (true: 누름, false: 안누름)")
+        private boolean isLiked;
+
         @Schema(description = "작성일시")
         private LocalDateTime createdAt;
 
         @Schema(description = "위치정보")
         private String location;
 
-        public static GetFeedDto of(Feed feed, String writerNickname, String petName, String imageBase64) {
+        public static GetFeedDto of(Feed feed, String writerNickname, String petName, String imageUrl, long likeCount, boolean isLiked) {
             return GetFeedDto.builder()
                     .feedId(feed.getId())
                     .writerNickname(writerNickname)
                     .petName(petName)
                     .content(feed.getContent())
                     .location(feed.getLocation())
-                    .imageUrl(imageBase64) //
+                    .imageUrl(imageUrl)
+                    .likeCount(likeCount)
+                    .isLiked(isLiked)
                     .createdAt(feed.getCreatedAt())
                     .build();
         }
