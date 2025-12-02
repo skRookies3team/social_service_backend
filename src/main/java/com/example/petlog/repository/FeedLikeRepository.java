@@ -5,6 +5,7 @@ import com.example.petlog.entity.FeedLike;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -17,4 +18,7 @@ public interface FeedLikeRepository extends JpaRepository<FeedLike, Long> {
 
     // 3. 개수용: 피드의 총 좋아요 개수
     long countByFeed(Feed feed);
+
+    // 4. 해당 피드의 모든 좋아요 리스트 조회
+    List<FeedLike> findAllByFeed(Feed feed);
 }

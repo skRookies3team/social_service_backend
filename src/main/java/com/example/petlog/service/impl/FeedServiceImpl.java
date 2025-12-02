@@ -8,6 +8,7 @@ import com.example.petlog.entity.Feed;
 import com.example.petlog.exception.BusinessException;
 import com.example.petlog.exception.EntityNotFoundException;
 import com.example.petlog.exception.ErrorCode;
+import com.example.petlog.repository.FeedLikeRepository;
 import com.example.petlog.repository.FeedRepository;
 import com.example.petlog.service.FeedService;
 import com.example.petlog.service.ImageService;
@@ -27,10 +28,9 @@ import java.util.stream.Collectors;
 public class FeedServiceImpl implements FeedService {
 
     private final FeedRepository feedRepository;
+    private final FeedLikeRepository feedLikeRepository; // ✅ 좋아요 Repo 추가
     private final UserClient userClient;
     private final PetClient petClient;
-
-    // 이미지 처리 로직을 담당하는 서비스 주입 (LocalImageService or S3ImageService)
     private final ImageService imageService;
 
     @Override
@@ -38,12 +38,10 @@ public class FeedServiceImpl implements FeedService {
     public Long createFeed(FeedRequest.CreateFeedDto request, MultipartFile file) {
         String filename = null;
 
-        // 1. 이미지 업로드 (ImageService에 위임)
         if (file != null && !file.isEmpty()) {
             filename = imageService.upload(file);
         }
 
-        // 2. 피드 엔티티 생성 및 저장 (DB에는 파일명만 저장)
         Feed feed = Feed.builder()
                 .userId(request.getUserId())
                 .petId(request.getPetId())
@@ -56,17 +54,17 @@ public class FeedServiceImpl implements FeedService {
     }
 
     @Override
-    public List<FeedResponse.GetFeedDto> getAllFeeds() {
+    public List<FeedResponse.GetFeedDto> getAllFeeds(Long currentUserId) {
         return feedRepository.findAllByOrderByCreatedAtDesc().stream()
-                .map(this::convertToDto)
+                .map(feed -> convertToDto(feed, currentUserId))
                 .collect(Collectors.toList());
     }
 
     @Override
-    public FeedResponse.GetFeedDto getFeed(Long feedId) {
+    public FeedResponse.GetFeedDto getFeed(Long feedId, Long currentUserId) {
         Feed feed = feedRepository.findById(feedId)
                 .orElseThrow(() -> new EntityNotFoundException("Feed", feedId));
-        return convertToDto(feed);
+        return convertToDto(feed, currentUserId);
     }
 
     @Override
@@ -79,8 +77,6 @@ public class FeedServiceImpl implements FeedService {
             throw new BusinessException(ErrorCode.FEED_UNAUTHORIZED);
         }
 
-        // 이미지 수정 로직은 현재 요구사항에 없으므로 기존 이미지 유지
-        // 필요 시 request.getImageUrl() 대신 파일 업로드 로직 추가 가능
         feed.updateFeed(request.getContent(), request.getImageUrl(), request.getLocation());
     }
 
@@ -96,19 +92,17 @@ public class FeedServiceImpl implements FeedService {
         feedRepository.delete(feed);
     }
 
-    // 엔티티 -> DTO 변환 (이미지 URL 생성 포함)
-    private FeedResponse.GetFeedDto convertToDto(Feed feed) {
+    // 엔티티 -> DTO 변환 (좋아요 정보 포함)
+    private FeedResponse.GetFeedDto convertToDto(Feed feed, Long currentUserId) {
         String nickname = "Unknown";
         String petName = null;
 
-        // 1. User Service 통신
         try {
             nickname = userClient.getNickname(feed.getUserId());
         } catch (Exception e) {
             log.warn("User Service 호출 실패: {}", e.getMessage());
         }
 
-        // 2. Pet Service 통신
         if (feed.getPetId() != null) {
             try {
                 petName = petClient.getPetName(feed.getPetId());
@@ -117,17 +111,23 @@ public class FeedServiceImpl implements FeedService {
             }
         }
 
-        // 3. 이미지 URL 생성 (ImageService에 위임)
         String fullImageUrl = null;
         if (feed.getImageUrl() != null) {
             if (feed.getImageUrl().startsWith("http")) {
-                fullImageUrl = feed.getImageUrl(); // 기존 테스트 데이터 호환
+                fullImageUrl = feed.getImageUrl();
             } else {
-                // Local일 땐 "/images/파일.jpg", S3일 땐 "https://s3.../파일.jpg" 반환
                 fullImageUrl = imageService.getImageUrl(feed.getImageUrl());
             }
         }
 
-        return FeedResponse.GetFeedDto.of(feed, nickname, petName, fullImageUrl);
+        // ✅ 좋아요 정보 조회
+        long likeCount = feedLikeRepository.countByFeed(feed);
+        boolean isLiked = false;
+        if (currentUserId != null) {
+            isLiked = feedLikeRepository.existsByFeedAndUserId(feed, currentUserId);
+        }
+
+        // DTO 생성 (파라미터 6개)
+        return FeedResponse.GetFeedDto.of(feed, nickname, petName, fullImageUrl, likeCount, isLiked);
     }
 }
