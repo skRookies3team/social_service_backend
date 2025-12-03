@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class FeedResponse {
 
@@ -41,7 +42,13 @@ public class FeedResponse {
         @Schema(description = "위치정보")
         private String location;
 
-        public static GetFeedDto of(Feed feed, String writerNickname, String petName, String imageUrl, long likeCount, boolean isLiked) {
+        @Schema(description = "전체 댓글 수")
+        private Long commentCount;
+
+        @Schema(description = "최신 댓글 미리보기 최대 3개까지 보여줌 ")
+        private List<CommentResponse.CommentDto> recentComments;
+
+        public static GetFeedDto of(Feed feed, String writerNickname, String petName, String imageUrl, long likeCount, boolean isLiked, Long commentCount, List<CommentResponse.CommentDto> recentComments) {
             return GetFeedDto.builder()
                     .feedId(feed.getId())
                     .writerNickname(writerNickname)
@@ -51,6 +58,8 @@ public class FeedResponse {
                     .imageUrl(imageUrl)
                     .likeCount(likeCount)
                     .isLiked(isLiked)
+                    .commentCount(commentCount)
+                    .recentComments(recentComments)
                     .createdAt(feed.getCreatedAt())
                     .build();
         }
