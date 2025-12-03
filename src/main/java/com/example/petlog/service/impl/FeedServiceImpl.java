@@ -147,4 +147,15 @@ public class FeedServiceImpl implements FeedService {
         // DTO 생성 (파라미터 6개)
         return FeedResponse.GetFeedDto.of(feed, nickname, petName, fullImageUrl, likeCount, isLiked, commentCount, recentComments);
     }
+
+    @Override
+    public List<FeedResponse.GetFeedDto> getUserFeeds(Long targetUserId, Long viewerId) {
+        // 1. 해당 유저가 쓴 글만 DB에서 가져옴
+        List<Feed> userFeeds = feedRepository.findAllByUserIdOrderByCreatedAtDesc(targetUserId);
+
+        // 2. DTO로 변환 (viewerId를 넘겨서 내가 좋아요 눌렀는지도 확인 가능하게 함)
+        return userFeeds.stream()
+                .map(feed -> convertToDto(feed, viewerId))
+                .collect(Collectors.toList());
+    }
 }

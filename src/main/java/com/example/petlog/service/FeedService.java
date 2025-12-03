@@ -21,4 +21,7 @@ public interface FeedService {
 
     // 피드 삭제
     void deleteFeed(Long feedId, Long userId);
+
+    // 특정유저의 피드목록 조회
+    List<FeedResponse.GetFeedDto> getUserFeeds(Long targetUserId, Long viewerId);
 }
