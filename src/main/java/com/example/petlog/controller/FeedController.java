@@ -77,4 +77,17 @@ public class FeedController {
         feedService.deleteFeed(feedId, userId);
         return ResponseEntity.noContent().build();
     }
+
+    // 특정 유저의 피드 모아보기 (마이페이지/상대방 프로필)
+    @GetMapping("/user/{targetUserId}/viewer/{viewerId}")
+    @Operation(summary = "유저별 피드 조회 (마이페이지)", description = "특정 유저(targetUserId)가 작성한 피드 목록을 조회합니다.")
+    public ResponseEntity<List<FeedResponse.GetFeedDto>> getUserFeeds(
+            @Parameter(description = "프로필 주인 ID", required = true)
+            @PathVariable Long targetUserId,
+
+            @Parameter(description = "보고 있는 사람 ID (좋아요 여부 확인용)", required = true)
+            @PathVariable Long viewerId
+    ) {
+        return ResponseEntity.ok(feedService.getUserFeeds(targetUserId, viewerId));
+    }
 }
