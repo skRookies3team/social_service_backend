@@ -10,6 +10,8 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -38,6 +40,9 @@ public class Feed {
     // MSA 전환: 객체 참조(Pet) 대신 ID(Long) 저장
     @Column(name = "pet_id")
     private Long petId;
+
+    @OneToMany(mappedBy = "feed", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<FeedHashtag> feedHashtags = new ArrayList<>();
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)

@@ -8,6 +8,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -38,12 +41,13 @@ public class FeedController {
     // 전체 피드 조회 (Path Variable 사용)
     // URL 예시: GET /api/feeds/viewer/1
     @GetMapping("/viewer/{userId}")
-    @Operation(summary = "전체 피드 조회", description = "로그인한 유저(viewer) 기준으로 좋아요 여부를 포함하여 조회합니다.")
-    public ResponseEntity<List<FeedResponse.GetFeedDto>> getAllFeeds(
+    @Operation(summary = "전체 피드 조회 (무한 스크롤)", description = "page=0, size=10 파라미터로 조절 가능합니다.")
+    public ResponseEntity<Slice<FeedResponse.GetFeedDto>> getAllFeeds(
             @Parameter(description = "로그인한 유저 ID", required = true)
-            @PathVariable Long userId // @RequestParam -> @PathVariable 변경
+            @PathVariable Long userId,
+            @PageableDefault(size = 10) Pageable pageable // 페이징 처리
     ) {
-        return ResponseEntity.ok(feedService.getAllFeeds(userId));
+        return ResponseEntity.ok(feedService.getAllFeeds(userId, pageable));
     }
 
     // 피드 상세 조회
@@ -80,23 +84,21 @@ public class FeedController {
 
     // 특정 유저의 피드 모아보기 (마이페이지/상대방 프로필)
     @GetMapping("/user/{targetUserId}/viewer/{viewerId}")
-    @Operation(summary = "유저별 피드 조회 (마이페이지)", description = "특정 유저(targetUserId)가 작성한 피드 목록을 조회합니다.")
-    public ResponseEntity<List<FeedResponse.GetFeedDto>> getUserFeeds(
-            @Parameter(description = "프로필 주인 ID", required = true)
+    @Operation(summary = "유저별 피드 조회 (마이페이지)", description = "특정 유저의 피드를 최신순으로 조회합니다.")
+    public ResponseEntity<Slice<FeedResponse.GetFeedDto>> getUserFeeds(
             @PathVariable Long targetUserId,
-
-            @Parameter(description = "보고 있는 사람 ID (좋아요 여부 확인용)", required = true)
-            @PathVariable Long viewerId
+            @PathVariable Long viewerId,
+            @PageableDefault(size = 12) Pageable pageable
     ) {
-        return ResponseEntity.ok(feedService.getUserFeeds(targetUserId, viewerId));
+        return ResponseEntity.ok(feedService.getUserFeeds(targetUserId, viewerId, pageable));
     }
 
     @GetMapping("/following/viewer/{userId}")
-    @Operation(summary = "팔로우 피드 조회", description = "내가 팔로우한 사용자들의 피드만 모아서 최신순으로 조회합니다.")
-    public ResponseEntity<List<FeedResponse.GetFeedDto>> getFollowingFeeds(
-            @Parameter(description = "로그인한 유저 ID", required = true)
-            @PathVariable("userId") Long viewerId
+    @Operation(summary = "팔로우 피드 조회", description = "내가 팔로우한 사용자들의 피드만 모아서 조회합니다.")
+    public ResponseEntity<Slice<FeedResponse.GetFeedDto>> getFollowingFeeds(
+            @PathVariable("userId") Long viewerId,
+            @PageableDefault(size = 10) Pageable pageable
     ) {
-        return ResponseEntity.ok(feedService.getFollowingFeeds(viewerId));
+        return ResponseEntity.ok(feedService.getFollowingFeeds(viewerId, pageable));
     }
 }

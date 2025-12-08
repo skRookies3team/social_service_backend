@@ -17,6 +17,8 @@ import com.example.petlog.service.FeedService;
 import com.example.petlog.service.ImageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -59,12 +61,10 @@ public class FeedServiceImpl implements FeedService {
     }
 
     @Override
-    public List<FeedResponse.GetFeedDto> getAllFeeds(Long currentUserId) {
-        // db에서 최신순으로 모든 피드 가져오기
-        return feedRepository.findAllByOrderByCreatedAtDesc().stream()
-                // 각 피드를 response dto로 변환
-                .map(feed -> convertToDto(feed, currentUserId))
-                .collect(Collectors.toList());
+    public Slice<FeedResponse.GetFeedDto> getAllFeeds(Long currentUserId, Pageable pageable) {
+        Slice<Feed> feedSlice = feedRepository.findAllByOrderByCreatedAtDesc(pageable);
+        // map 함수를 사용하여 Slice 내부의 내용물만 DTO로 변환
+        return feedSlice.map(feed -> convertToDto(feed, currentUserId));
     }
 
     @Override
@@ -99,17 +99,27 @@ public class FeedServiceImpl implements FeedService {
         feedRepository.delete(feed);
     }
 
-    // 엔티티 -> DTO 변환
+    @Override
+    public Slice<FeedResponse.GetFeedDto> getUserFeeds(Long targetUserId, Long viewerId, Pageable pageable) {
+        Slice<Feed> feedSlice = feedRepository.findAllByUserIdOrderByCreatedAtDesc(targetUserId, pageable);
+        return feedSlice.map(feed -> convertToDto(feed, viewerId));
+    }
+
+    @Override
+    public Slice<FeedResponse.GetFeedDto> getFollowingFeeds(Long viewerId, Pageable pageable) {
+        Slice<Feed> feedSlice = feedRepository.findAllByFollowingUsers(viewerId, pageable);
+        return feedSlice.map(feed -> convertToDto(feed, viewerId));
+    }
+
+    // 엔티티 -> DTO 변환 (기존 로직 유지)
     private FeedResponse.GetFeedDto convertToDto(Feed feed, Long currentUserId) {
         String nickname = "Unknown";
         String petName = null;
-        // 1. 유저서비스에서 닉네임 가져옴
         try {
             nickname = userClient.getNickname(feed.getUserId());
         } catch (Exception e) {
             log.warn("User Service 호출 실패: {}", e.getMessage());
         }
-        // 2. 펫서비스에서 펫이름 가져옴 근데 유저랑 펫서비스가 회원으로 통합되서 수정예정
         if (feed.getPetId() != null) {
             try {
                 petName = petClient.getPetName(feed.getPetId());
@@ -118,7 +128,6 @@ public class FeedServiceImpl implements FeedService {
             }
         }
 
-        // 3. 이미지 주소 만들기
         String fullImageUrl = null;
         if (feed.getImageUrl() != null) {
             if (feed.getImageUrl().startsWith("http")) {
@@ -128,43 +137,19 @@ public class FeedServiceImpl implements FeedService {
             }
         }
 
-        // 4. 좋아요 정보 채우기 count로 좋아요수 세고 좋아요눌렀는지 확인까지
         long likeCount = feedLikeRepository.countByFeed(feed);
         boolean isLiked = false;
         if (currentUserId != null) {
             isLiked = feedLikeRepository.existsByFeedAndUserId(feed, currentUserId);
         }
 
-        // 댓글 미리보기 데이터 조회
         Long commentCount = commentRepository.countByFeedId(feed.getId());
         List<Comment> top3Comments = commentRepository.findTop3ByFeedIdAndParentIsNullOrderByCreatedAtDesc(feed.getId());
 
-        // Comment 엔티티 -> DTO 변환 (간단히)
         List<CommentResponse.CommentDto> recentComments = top3Comments.stream()
-                .map(c -> CommentResponse.CommentDto.of(c, "Unknown")) // 닉네임 조회 로직 생략
+                .map(c -> CommentResponse.CommentDto.of(c, "Unknown"))
                 .collect(Collectors.toList());
 
-        // DTO 생성 (파라미터 6개)
         return FeedResponse.GetFeedDto.of(feed, nickname, petName, fullImageUrl, likeCount, isLiked, commentCount, recentComments);
-    }
-
-    @Override
-    public List<FeedResponse.GetFeedDto> getUserFeeds(Long targetUserId, Long viewerId) {
-        // 1. 해당 유저가 쓴 글만 DB에서 가져옴
-        List<Feed> userFeeds = feedRepository.findAllByUserIdOrderByCreatedAtDesc(targetUserId);
-
-        // 2. DTO로 변환 (viewerId를 넘겨서 내가 좋아요 눌렀는지도 확인 가능하게 함)
-        return userFeeds.stream()
-                .map(feed -> convertToDto(feed, viewerId))
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<FeedResponse.GetFeedDto> getFollowingFeeds(Long viewerId) {
-        List<Feed> feeds = feedRepository.findAllByFollowingUsers(viewerId);
-
-        return feeds.stream()
-                .map(feed -> convertToDto(feed, viewerId))
-                .collect(Collectors.toList());
     }
 }
