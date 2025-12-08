@@ -90,4 +90,13 @@ public class FeedController {
     ) {
         return ResponseEntity.ok(feedService.getUserFeeds(targetUserId, viewerId));
     }
+
+    @GetMapping("/following/viewer/{userId}")
+    @Operation(summary = "팔로우 피드 조회", description = "내가 팔로우한 사용자들의 피드만 모아서 최신순으로 조회합니다.")
+    public ResponseEntity<List<FeedResponse.GetFeedDto>> getFollowingFeeds(
+            @Parameter(description = "로그인한 유저 ID", required = true)
+            @PathVariable("userId") Long viewerId
+    ) {
+        return ResponseEntity.ok(feedService.getFollowingFeeds(viewerId));
+    }
 }

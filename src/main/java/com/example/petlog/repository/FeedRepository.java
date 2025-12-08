@@ -2,6 +2,8 @@ package com.example.petlog.repository;
 
 import com.example.petlog.entity.Feed;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -16,4 +18,11 @@ public interface FeedRepository extends JpaRepository<Feed, Long> {
 
     //특정유저의 게시글 수 조회
     Long countByUserId(Long userId);
+
+    @Query("SELECT f FROM Feed f " +
+            "WHERE f.userId IN (" +
+            "   SELECT fw.followingId FROM Follow fw WHERE fw.followerId = :followerId" +
+            ") " +
+            "ORDER BY f.createdAt DESC")
+    List<Feed> findAllByFollowingUsers(@Param("followerId") Long followerId);
 }

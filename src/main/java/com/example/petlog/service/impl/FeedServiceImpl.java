@@ -158,4 +158,13 @@ public class FeedServiceImpl implements FeedService {
                 .map(feed -> convertToDto(feed, viewerId))
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<FeedResponse.GetFeedDto> getFollowingFeeds(Long viewerId) {
+        List<Feed> feeds = feedRepository.findAllByFollowingUsers(viewerId);
+
+        return feeds.stream()
+                .map(feed -> convertToDto(feed, viewerId))
+                .collect(Collectors.toList());
+    }
 }
