@@ -2,9 +2,11 @@ package com.example.petlog.service;
 
 import com.example.petlog.dto.request.FeedRequest;
 import com.example.petlog.dto.response.FeedResponse;
+import com.example.petlog.entity.Feed;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public interface FeedService {
     // 피드 작성
@@ -24,4 +26,8 @@ public interface FeedService {
 
     // 특정유저의 피드목록 조회
     List<FeedResponse.GetFeedDto> getUserFeeds(Long targetUserId, Long viewerId);
+
+    // 팔로우한 사용자 피드만 조회
+    List<FeedResponse.GetFeedDto> getFollowingFeeds(Long viewerId);
+
 }
