@@ -1,6 +1,7 @@
 package com.petlog.social.service.impl;
 
 import com.petlog.social.client.UserClient;
+import com.petlog.social.dto.client.UserClientResponse;
 import com.petlog.social.dto.response.FeedLikeResponse;
 import com.petlog.social.entity.Feed;
 import com.petlog.social.entity.FeedLike;
@@ -58,7 +59,7 @@ public class FeedLikeServiceImpl implements FeedLikeService {
                 .map(like -> {
                     String nickname = "Unknown";
                     try {
-                        nickname = userClient.getNickname(like.getUserId());
+                        UserClientResponse userDto = userClient.getUser(like.getUserId());
                     } catch (Exception e) {
                         log.warn("User Service Error: {}", e.getMessage());
                     }

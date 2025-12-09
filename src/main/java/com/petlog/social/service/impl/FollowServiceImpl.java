@@ -1,6 +1,7 @@
 package com.petlog.social.service.impl;
 
 import com.petlog.social.client.UserClient;
+import com.petlog.social.dto.client.UserClientResponse;
 import com.petlog.social.dto.response.FollowListResponse;
 import com.petlog.social.dto.response.FollowStatResponse;
 import com.petlog.social.entity.Follow;
@@ -92,10 +93,14 @@ public class FollowServiceImpl implements FollowService {
 
     private String getUserNickname(Long userId) {
         try {
-            return userClient.getNickname(userId);
+            // getUser() 호출 후 닉네임 추출
+            UserClientResponse userDto = userClient.getUser(userId);
+            if (userDto != null) {
+                return userDto.getNickname();
+            }
         } catch (Exception e) {
             log.warn("User Service Error: {}", e.getMessage());
-            return "Unknown";
         }
+        return "Unknown";
     }
 }

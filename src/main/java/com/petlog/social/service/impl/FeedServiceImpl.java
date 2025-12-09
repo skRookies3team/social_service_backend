@@ -2,6 +2,8 @@ package com.petlog.social.service.impl;
 
 import com.petlog.social.client.PetClient;
 import com.petlog.social.client.UserClient;
+import com.petlog.social.dto.client.PetClientResponse;
+import com.petlog.social.dto.client.UserClientResponse;
 import com.petlog.social.dto.request.FeedRequest;
 import com.petlog.social.dto.response.CommentResponse;
 import com.petlog.social.dto.response.FeedResponse;
@@ -192,19 +194,27 @@ public class FeedServiceImpl implements FeedService {
         String nickname = "Unknown";
         String petName = null;
 
-        // 1. 유저 서비스한테 닉네임 물어보기
+        // 1. 유저 서비스 호출 수정
         try {
-            nickname = userClient.getNickname(feed.getUserId());
+            // [변경] getUser() 호출 후 DTO에서 닉네임 꺼내기
+            UserClientResponse userDto = userClient.getUser(feed.getUserId());
+            if (userDto != null) {
+                nickname = userDto.getNickname();
+            }
         } catch (Exception e) {
-            log.warn("유저 서비스가 아픈가봐요: {}", e.getMessage());
+            log.warn("유저 서비스 호출 실패 (User ID: {}): {}", feed.getUserId(), e.getMessage());
         }
 
-        // 2. 펫 서비스한테 펫 이름 물어보기
+        // 2. 펫 서비스 호출 수정
         if (feed.getPetId() != null) {
             try {
-                petName = petClient.getPetName(feed.getPetId());
+                // [변경] getPet() 호출 후 DTO에서 펫 이름 꺼내기
+                PetClientResponse petDto = petClient.getPet(feed.getPetId());
+                if (petDto != null) {
+                    petName = petDto.getPetName();
+                }
             } catch (Exception e) {
-                log.warn("펫 서비스 연결 실패: {}", e.getMessage());
+                log.warn("펫 서비스 호출 실패 (Pet ID: {}): {}", feed.getPetId(), e.getMessage());
             }
         }
 
