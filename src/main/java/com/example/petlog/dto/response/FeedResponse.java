@@ -48,7 +48,10 @@ public class FeedResponse {
         @Schema(description = "최신 댓글 미리보기 최대 3개까지 보여줌 ")
         private List<CommentResponse.CommentDto> recentComments;
 
-        public static GetFeedDto of(Feed feed, String writerNickname, String petName, String imageUrl, long likeCount, boolean isLiked, Long commentCount, List<CommentResponse.CommentDto> recentComments) {
+        @Schema(description = "해시태그 목록")
+        private List<String> hashtags;
+
+        public static GetFeedDto of(Feed feed, String writerNickname, String petName, String imageUrl, long likeCount, boolean isLiked, Long commentCount, List<CommentResponse.CommentDto> recentComments, List<String> hashtags) {
             return GetFeedDto.builder()
                     .feedId(feed.getId())
                     .writerNickname(writerNickname)
@@ -60,6 +63,7 @@ public class FeedResponse {
                     .isLiked(isLiked)
                     .commentCount(commentCount)
                     .recentComments(recentComments)
+                    .hashtags(hashtags)
                     .createdAt(feed.getCreatedAt())
                     .build();
         }

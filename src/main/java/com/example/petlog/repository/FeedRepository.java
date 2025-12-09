@@ -1,6 +1,8 @@
 package com.example.petlog.repository;
 
 import com.example.petlog.entity.Feed;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,19 +12,20 @@ import java.util.List;
 
 @Repository
 public interface FeedRepository extends JpaRepository<Feed, Long> {
-    // 생성일 기준 내림차순(최신순)으로 모든 피드를 조회합니다.
-    List<Feed> findAllByOrderByCreatedAtDesc();
+    // 1. 전체 피드 조회 (페이징 적용)
+    Slice<Feed> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
-    //특정유저의 피드만 최신순으로 조회
-    List<Feed> findAllByUserIdOrderByCreatedAtDesc(Long userId);
+    // 2. 특정 유저의 피드 조회 (페이징 적용)
+    Slice<Feed> findAllByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
-    //특정유저의 게시글 수 조회
+    // 3. 게시글 수 조회 (기존 유지)
     Long countByUserId(Long userId);
 
+    // 4. 팔로우한 유저 피드 조회 (페이징 적용)
     @Query("SELECT f FROM Feed f " +
             "WHERE f.userId IN (" +
             "   SELECT fw.followingId FROM Follow fw WHERE fw.followerId = :followerId" +
             ") " +
             "ORDER BY f.createdAt DESC")
-    List<Feed> findAllByFollowingUsers(@Param("followerId") Long followerId);
+    Slice<Feed> findAllByFollowingUsers(@Param("followerId") Long followerId, Pageable pageable);
 }
