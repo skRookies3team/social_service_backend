@@ -1,6 +1,7 @@
 package com.petlog.social.service.impl;
 
 import com.petlog.social.client.UserClient;
+import com.petlog.social.dto.client.UserClientResponse; // ✅ DTO Import 추가
 import com.petlog.social.dto.request.CommentRequest;
 import com.petlog.social.dto.response.CommentResponse;
 import com.petlog.social.entity.Comment;
@@ -36,7 +37,6 @@ public class CommentServiceImpl implements CommentService {
                 .orElseThrow(() -> new EntityNotFoundException("Feed", feedId));
 
         Comment parent = null;
-        // 대댓글인 경우 부모 댓글 조회
         if (request.getParentId() != null) {
             parent = commentRepository.findById(request.getParentId())
                     .orElseThrow(() -> new EntityNotFoundException("Comment", request.getParentId()));
@@ -46,7 +46,7 @@ public class CommentServiceImpl implements CommentService {
                 .userId(request.getUserId())
                 .content(request.getContent())
                 .feed(feed)
-                .parent(parent) // 부모 설정 (없으면 null)
+                .parent(parent)
                 .build();
 
         commentRepository.save(comment);
@@ -54,7 +54,6 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public List<CommentResponse.CommentDto> getComments(Long feedId) {
-        // 최상위 댓글만 가져옴 (자식은 엔티티 안에 들어있음)
         List<Comment> comments = commentRepository.findAllByFeedIdAndParentIsNullOrderByCreatedAtDesc(feedId);
 
         return comments.stream()
@@ -74,17 +73,18 @@ public class CommentServiceImpl implements CommentService {
         commentRepository.delete(comment);
     }
 
-    // DTO 변환 헬퍼 메서드 (닉네임 조회 포함)
+    // DTO 변환 헬퍼 메서드
     private CommentResponse.CommentDto convertToDto(Comment comment) {
         String nickname = "Unknown";
         try {
-            nickname = userClient.getNickname(comment.getUserId());
+            // 🚨 [수정됨] getNickname() -> getUser().getNickname()
+            UserClientResponse userDto = userClient.getUser(comment.getUserId());
+            if (userDto != null) {
+                nickname = userDto.getUsername();
+            }
         } catch (Exception e) {
             log.warn("User Service Error: {}", e.getMessage());
         }
-        // 자식 댓글들의 닉네임 처리는 복잡도를 줄이기 위해 여기서 재귀적으로 하진 않았지만,
-        // 실제로는 자식 댓글의 userId로도 닉네임을 조회해야 합니다.
-        // 지금은 부모 닉네임만 조회하고 자식은 of 메서드에서 처리하도록 둡니다.
         return CommentResponse.CommentDto.of(comment, nickname);
     }
 }

@@ -10,18 +10,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.ArrayList; // ✅ ArrayList 임포트 필수
 import java.util.List;
 
 @Configuration
 public class SwaggerConfig {
 
-    // application.yml의 openapi.service.url 값을 가져옴
     @Value("${openapi.service.url}")
     private String gatewayUrl;
 
     @Bean
     public OpenAPI openAPI() {
-        // 1. 보안 스키마 설정 (JWT 토큰 인증 버튼 추가)
+        // 1. 보안 스키마 설정 (JWT 토큰 인증)
         SecurityScheme securityScheme = new SecurityScheme()
                 .type(SecurityScheme.Type.HTTP)
                 .scheme("bearer")
@@ -31,15 +31,17 @@ public class SwaggerConfig {
 
         SecurityRequirement securityRequirement = new SecurityRequirement().addList("BearerAuth");
 
-        // 2. 서버 설정 (Gateway 주소로 요청을 보내도록 설정)
+        // 2. 서버 설정 (Gateway 주소)
         Server server = new Server()
                 .url(gatewayUrl)
                 .description("API Gateway Server");
 
         return new OpenAPI()
                 .components(new Components().addSecuritySchemes("BearerAuth", securityScheme))
-                .security(List.of(securityRequirement))
-                .servers(List.of(server)) // Gateway URL 등록
+                // ✅ [수정] List.of()를 new ArrayList<>()로 감싸서 수정 가능한 리스트로 변경
+                .security(new ArrayList<>(List.of(securityRequirement)))
+                // ✅ [수정] 마찬가지로 servers 리스트도 수정 가능하도록 변경
+                .servers(new ArrayList<>(List.of(server)))
                 .info(apiInfo());
     }
 

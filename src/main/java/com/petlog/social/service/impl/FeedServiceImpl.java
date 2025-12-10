@@ -2,6 +2,8 @@ package com.petlog.social.service.impl;
 
 import com.petlog.social.client.PetClient;
 import com.petlog.social.client.UserClient;
+import com.petlog.social.dto.client.PetClientResponse;
+import com.petlog.social.dto.client.UserClientResponse;
 import com.petlog.social.dto.request.FeedRequest;
 import com.petlog.social.dto.response.CommentResponse;
 import com.petlog.social.dto.response.FeedResponse;
@@ -192,23 +194,29 @@ public class FeedServiceImpl implements FeedService {
         String nickname = "Unknown";
         String petName = null;
 
-        // 1. 유저 서비스한테 닉네임 물어보기
+        // 1. 유저 서비스 호출
         try {
-            nickname = userClient.getNickname(feed.getUserId());
+            UserClientResponse userDto = userClient.getUser(feed.getUserId());
+            if (userDto != null) {
+                // [수정] getNickname() -> getUsername()
+                nickname = userDto.getUsername();
+            }
         } catch (Exception e) {
-            log.warn("유저 서비스가 아픈가봐요: {}", e.getMessage());
+            log.warn("User Service 호출 실패 (User ID: {}): {}", feed.getUserId(), e.getMessage());
         }
 
-        // 2. 펫 서비스한테 펫 이름 물어보기
+        // 2. 펫 서비스 호출
         if (feed.getPetId() != null) {
             try {
-                petName = petClient.getPetName(feed.getPetId());
+                PetClientResponse petDto = petClient.getPet(feed.getPetId());
+                if (petDto != null) {
+                    petName = petDto.getPetName(); // 이건 그대로 유지
+                }
             } catch (Exception e) {
-                log.warn("펫 서비스 연결 실패: {}", e.getMessage());
+                log.warn("Pet Service 호출 실패 (Pet ID: {}): {}", feed.getPetId(), e.getMessage());
             }
         }
 
-        // 3. 이미지 URL 완성하기 (S3면 그대로, 로컬이면 경로 붙여서)
         String fullImageUrl = null;
         if (feed.getImageUrl() != null) {
             if (feed.getImageUrl().startsWith("http")) {
@@ -218,32 +226,26 @@ public class FeedServiceImpl implements FeedService {
             }
         }
 
-        // 4. 좋아요 관련 정보 채우기
-        long likeCount = feedLikeRepository.countByFeed(feed); // 총 몇 개인지
+        long likeCount = feedLikeRepository.countByFeed(feed);
         boolean isLiked = false;
         if (currentUserId != null) {
-            // 내가 눌렀는지 확인
             isLiked = feedLikeRepository.existsByFeedAndUserId(feed, currentUserId);
         }
 
-        // 5. 댓글 정보 (총 개수 + 최신 3개 미리보기)
         Long commentCount = commentRepository.countByFeedId(feed.getId());
         List<Comment> top3Comments = commentRepository.findTop3ByFeedIdAndParentIsNullOrderByCreatedAtDesc(feed.getId());
 
         List<CommentResponse.CommentDto> recentComments = top3Comments.stream()
-                .map(c -> CommentResponse.CommentDto.of(c, "Unknown")) // 대댓글 닉네임은 일단 생략
+                .map(c -> CommentResponse.CommentDto.of(c, "Unknown"))
                 .collect(Collectors.toList());
 
-        // 6. 이 피드에 달린 해시태그들 싹 긁어오기 (String 리스트로 변환)
         List<String> hashtags = feed.getFeedHashtags().stream()
                 .map(fh -> fh.getHashtag().getName())
                 .collect(Collectors.toList());
 
-        // DTO에 다 때려박고 반환
         return FeedResponse.GetFeedDto.of(
                 feed, nickname, petName, fullImageUrl,
-                likeCount, isLiked, commentCount, recentComments,
-                hashtags // 새로 추가된 부분
+                likeCount, isLiked, commentCount, recentComments, hashtags
         );
     }
 }
