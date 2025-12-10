@@ -80,7 +80,7 @@ public class CommentServiceImpl implements CommentService {
             // 🚨 [수정됨] getNickname() -> getUser().getNickname()
             UserClientResponse userDto = userClient.getUser(comment.getUserId());
             if (userDto != null) {
-                nickname = userDto.getNickname();
+                nickname = userDto.getUsername();
             }
         } catch (Exception e) {
             log.warn("User Service Error: {}", e.getMessage());

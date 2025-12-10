@@ -96,7 +96,7 @@ public class FollowServiceImpl implements FollowService {
             // getUser() 호출 후 닉네임 추출
             UserClientResponse userDto = userClient.getUser(userId);
             if (userDto != null) {
-                return userDto.getNickname();
+                return userDto.getUsername();
             }
         } catch (Exception e) {
             log.warn("User Service Error: {}", e.getMessage());

@@ -48,18 +48,18 @@ public class FeedLikeServiceImpl implements FeedLikeService {
     // 좋아요 누른 사람 목록 조회 (전체 공개)
     @Override
     public List<FeedLikeResponse.LikerDto> getLikers(Long feedId) {
-        // 1. 피드 조회
         Feed feed = feedRepository.findById(feedId)
                 .orElseThrow(() -> new EntityNotFoundException("Feed", feedId));
 
-        // 🔥 주인 권한 체크 로직 (if !feed.getUserId().equals(userId)...) 제거
-
-        // 2. 좋아요 목록 반환 (누구나 조회 가능)
         return feedLikeRepository.findAllByFeed(feed).stream()
                 .map(like -> {
                     String nickname = "Unknown";
                     try {
                         UserClientResponse userDto = userClient.getUser(like.getUserId());
+                        if (userDto != null) {
+                            // [수정] getNickname() -> getUsername()
+                            nickname = userDto.getUsername();
+                        }
                     } catch (Exception e) {
                         log.warn("User Service Error: {}", e.getMessage());
                     }

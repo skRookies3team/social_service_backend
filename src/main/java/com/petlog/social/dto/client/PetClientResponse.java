@@ -10,5 +10,6 @@ import lombok.Setter;
 public class PetClientResponse {
     private Long petId;
     private String petName;
-    private String breed; // 품종 등 필요하면 추가
+    private String breed;
+    private String profileImage; // 프로필 이미지 필드 추가
 }
