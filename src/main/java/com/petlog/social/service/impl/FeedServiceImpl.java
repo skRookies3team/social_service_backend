@@ -4,9 +4,11 @@ import com.petlog.social.client.PetClient;
 import com.petlog.social.client.UserClient;
 import com.petlog.social.dto.client.PetClientResponse;
 import com.petlog.social.dto.client.UserClientResponse;
+import com.petlog.social.dto.client.UserSearchListResponse;
 import com.petlog.social.dto.request.FeedRequest;
 import com.petlog.social.dto.response.CommentResponse;
 import com.petlog.social.dto.response.FeedResponse;
+import com.petlog.social.dto.response.SearchResponse;
 import com.petlog.social.entity.Comment;
 import com.petlog.social.entity.Feed;
 import com.petlog.social.entity.FeedHashtag;
@@ -25,9 +27,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -248,4 +249,44 @@ public class FeedServiceImpl implements FeedService {
                 likeCount, isLiked, commentCount, recentComments, hashtags
         );
     }
+
+    @Override
+    public SearchResponse searchAll(String query, Long viewerId, Pageable pageable) {
+        List<UserClientResponse> users = new ArrayList<>();
+        String hashtagKeyword = query;
+
+        // 1. 검색어 분석 (# 여부)
+        if (query.startsWith("#")) {
+            // #으로 시작하면 해시태그만 검색 (유저 검색 Skip)
+            hashtagKeyword = query.substring(1);
+        } else {
+            // #이 없으면 유저 검색 수행
+            try {
+                // User Service 호출 (변경된 반환 타입 적용)
+                UserSearchListResponse response = userClient.searchUsersWithSocial(query);
+                if (response != null && response.getUsers() != null) {
+                    users = response.getUsers();
+                }
+            } catch (Exception e) {
+                log.error("User Search Failed: {}", e.getMessage());
+                users = Collections.emptyList();
+            }
+        }
+
+        // 2. 해시태그 피드 검색 (항상 수행)
+        Slice<Feed> feeds = feedRepository.findByHashtag(hashtagKeyword, pageable);
+        Slice<FeedResponse.GetFeedDto> feedDtos = feeds.map(feed -> convertToDto(feed, viewerId));
+
+        // 3. 결과 조합 반환
+        return SearchResponse.of(users, feedDtos);
+    }
+
+    @Override
+    public Slice<FeedResponse.GetFeedDto> getTrendingFeeds(Long viewerId, Pageable pageable) {
+        // 최근 7일 내 인기글
+        LocalDateTime oneWeekAgo = LocalDateTime.now().minusDays(7);
+        Slice<Feed> feeds = feedRepository.findTrendingFeeds(oneWeekAgo, pageable);
+        return feeds.map(feed -> convertToDto(feed, viewerId));
+    }
+
 }
