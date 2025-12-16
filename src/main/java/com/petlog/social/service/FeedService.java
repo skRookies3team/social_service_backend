@@ -2,7 +2,6 @@ package com.petlog.social.service;
 
 import com.petlog.social.dto.request.FeedRequest;
 import com.petlog.social.dto.response.FeedResponse;
-import com.petlog.social.dto.response.SearchResponse;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,10 +27,4 @@ public interface FeedService {
 
     // [변경] 팔로우한 사용자 피드만 조회 (List -> Slice, Pageable 추가)
     Slice<FeedResponse.GetFeedDto> getFollowingFeeds(Long viewerId, Pageable pageable);
-
-    // [New] 통합 검색
-    SearchResponse searchAll(String query, Long viewerId, Pageable pageable);
-
-    // [New] 인기 게시물
-    Slice<FeedResponse.GetFeedDto> getTrendingFeeds(Long viewerId, Pageable pageable);
 }
