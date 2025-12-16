@@ -5,7 +5,10 @@ import com.petlog.social.dto.response.CommentResponse;
 import java.util.List;
 
 public interface CommentService {
-    void createComment(Long feedId, CommentRequest request);
-    List<CommentResponse.CommentDto> getComments(Long feedId); // 전체보기
+    // [수정] DTO 하나만 받도록 변경
+    Long createComment(CommentRequest.CreateDto request);
+
+    List<CommentResponse.CommentDto> getComments(Long feedId);
+
     void deleteComment(Long commentId, Long userId);
 }
