@@ -13,18 +13,17 @@ public class CommentRequest {
     @Setter
     @NoArgsConstructor
     public static class CreateDto {
-
         @NotNull(message = "작성자 ID는 필수입니다.")
         private Long userId;
 
-        // [수정] @NotNull 제거 (컨트롤러에서 PathVariable로 주입하므로 검증 제외)
-        @Schema(description = "피드 ID (URL 파라미터로 자동 주입됨)", example = "1", hidden = true)
+        @Schema(description = "피드 ID (URL 경로로 자동 주입)", hidden = true)
+        // [중요] @NotNull 제거 (컨트롤러 진입 전 검증 실패 방지)
         private Long feedId;
 
         @NotBlank(message = "댓글 내용은 필수입니다.")
         private String content;
 
-        @Schema(description = "부모 댓글 ID (대댓글일 경우에만 입력, 원댓글이면 null)", nullable = true)
+        @Schema(description = "부모 댓글 ID (대댓글인 경우에만 입력)", nullable = true)
         private Long parentId;
     }
 }
