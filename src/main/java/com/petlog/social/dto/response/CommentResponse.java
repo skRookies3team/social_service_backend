@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class CommentResponse {
 
@@ -20,6 +22,7 @@ public class CommentResponse {
         private String writerSocialId;
         private String writerNickname;
         private String writerProfileImage;
+        private List<CommentDto> children; // 대댓글 리스트
         // ---------------------
 
         private String content;
@@ -36,6 +39,9 @@ public class CommentResponse {
                     .writerProfileImage(user != null ? user.getProfileImage() : null)
                     .content(comment.getContent())
                     .createdAt(comment.getCreatedAt())
+                    .children(comment.getChildren().stream()
+                            .map(child -> CommentDto.of(child, null)) // 자식의 유저 정보는 일단 null 또는 별도 로직 처리
+                            .collect(Collectors.toList()))
                     .build();
         }
     }
