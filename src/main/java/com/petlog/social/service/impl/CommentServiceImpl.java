@@ -1,7 +1,7 @@
 package com.petlog.social.service.impl;
 
 import com.petlog.social.client.UserClient;
-import com.petlog.social.dto.client.UserClientResponse; // ✅ DTO Import 추가
+import com.petlog.social.dto.client.UserClientResponse;
 import com.petlog.social.dto.request.CommentRequest;
 import com.petlog.social.dto.response.CommentResponse;
 import com.petlog.social.entity.Comment;
@@ -28,20 +28,23 @@ public class CommentServiceImpl implements CommentService {
 
     private final CommentRepository commentRepository;
     private final FeedRepository feedRepository;
-    private final UserClient userClient;
+    private final UserClient userClient; // [추가] 유저 정보 조회용
 
     @Override
     @Transactional
-    public void createComment(Long feedId, CommentRequest request) {
-        Feed feed = feedRepository.findById(feedId)
-                .orElseThrow(() -> new EntityNotFoundException("Feed", feedId));
+    public Long createComment(CommentRequest.CreateDto request) {
+        // 1. 피드 조회
+        Feed feed = feedRepository.findById(request.getFeedId())
+                .orElseThrow(() -> new EntityNotFoundException("Feed", request.getFeedId()));
 
+        // 2. 부모 댓글 조회 (대댓글인 경우)
         Comment parent = null;
         if (request.getParentId() != null) {
             parent = commentRepository.findById(request.getParentId())
                     .orElseThrow(() -> new EntityNotFoundException("Comment", request.getParentId()));
         }
 
+        // 3. 저장
         Comment comment = Comment.builder()
                 .userId(request.getUserId())
                 .content(request.getContent())
@@ -49,11 +52,13 @@ public class CommentServiceImpl implements CommentService {
                 .parent(parent)
                 .build();
 
-        commentRepository.save(comment);
+        return commentRepository.save(comment).getId();
     }
 
     @Override
     public List<CommentResponse.CommentDto> getComments(Long feedId) {
+        // 해당 피드의 모든 댓글 조회
+        // (만약 대댓글 구조를 위해 부모만 가져오고 싶다면 리포지토리 메서드 수정 필요)
         List<Comment> comments = commentRepository.findAllByFeedIdAndParentIsNullOrderByCreatedAtDesc(feedId);
 
         return comments.stream()
@@ -68,23 +73,19 @@ public class CommentServiceImpl implements CommentService {
                 .orElseThrow(() -> new EntityNotFoundException("Comment", commentId));
 
         if (!comment.getUserId().equals(userId)) {
-            throw new BusinessException(ErrorCode.OPERATION_NOT_ALLOWED, "본인의 댓글만 삭제할 수 있습니다.");
+            throw new BusinessException(ErrorCode.FEED_UNAUTHORIZED);
         }
         commentRepository.delete(comment);
     }
 
-    // DTO 변환 헬퍼 메서드
+    // [리팩토링] DTO 변환 시 User Service 호출
     private CommentResponse.CommentDto convertToDto(Comment comment) {
-        String nickname = "Unknown";
+        UserClientResponse user = null;
         try {
-            // 🚨 [수정됨] getNickname() -> getUser().getNickname()
-            UserClientResponse userDto = userClient.getUser(comment.getUserId());
-            if (userDto != null) {
-                nickname = userDto.getUsername();
-            }
+            user = userClient.getUser(comment.getUserId());
         } catch (Exception e) {
-            log.warn("User Service Error: {}", e.getMessage());
+            log.warn("Comment User fetch failed (userId={}): {}", comment.getUserId(), e.getMessage());
         }
-        return CommentResponse.CommentDto.of(comment, nickname);
+        return CommentResponse.CommentDto.of(comment, user);
     }
 }

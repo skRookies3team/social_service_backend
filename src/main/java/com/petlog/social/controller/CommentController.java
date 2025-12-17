@@ -20,19 +20,23 @@ public class CommentController {
 
     private final CommentService commentService;
 
-    // 댓글 작성 (대댓글 포함)
+    // 댓글 작성
     @PostMapping("/feeds/{feedId}/comments")
     @Operation(summary = "댓글 작성", description = "parentId가 있으면 대댓글, 없으면 원댓글이 됩니다.")
     public ResponseEntity<String> createComment(
             @PathVariable Long feedId,
-            @Valid @RequestBody CommentRequest request) {
-        commentService.createComment(feedId, request);
+            @Valid @RequestBody CommentRequest.CreateDto request // [수정] CreateDto 사용
+    ) {
+        // URL에서 받은 feedId 주입
+        request.setFeedId(feedId);
+
+        commentService.createComment(request);
         return ResponseEntity.ok("댓글이 작성되었습니다.");
     }
 
-    // 전체 댓글 조회 (상세보기용)
+    // 댓글 목록 조회
     @GetMapping("/feeds/{feedId}/comments")
-    @Operation(summary = "댓글 전체 조회", description = "해당 피드의 모든 댓글을 계층 구조로 조회합니다.")
+    @Operation(summary = "댓글 전체 조회", description = "해당 피드의 댓글 목록을 조회합니다.")
     public ResponseEntity<List<CommentResponse.CommentDto>> getComments(@PathVariable Long feedId) {
         return ResponseEntity.ok(commentService.getComments(feedId));
     }

@@ -1,20 +1,8 @@
 spring:
   application:
     name: social-service
-  datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
-    driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
 
+  # Feign Client 공통 설정
   cloud:
     openfeign:
       client:
@@ -27,13 +15,5 @@ server:
   port: 8083
   shutdown: graceful
 
-# Swagger에서 사용할 Gateway 주소 변수는 남겨둠 (Java Config에서 주입받기 위함)
-openapi:
-  service:
-    url: ${API_GATEWAY}
-
-external:
-  user-service:
-    url: ${USER_SERVICE_URL}
-  pet-service:
-    url: ${PET_SERVICE_URL}
+# 기본 프로필 설정 (기본적으로 dev 실행)
+spring.profiles.active: dev
