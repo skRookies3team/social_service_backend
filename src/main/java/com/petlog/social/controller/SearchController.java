@@ -11,7 +11,7 @@ import org.springframework.data.domain.Slice;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+//왜안되는지몰라서일단 주석달아봄
 @RestController
 @RequestMapping("/api/search")
 @RequiredArgsConstructor
