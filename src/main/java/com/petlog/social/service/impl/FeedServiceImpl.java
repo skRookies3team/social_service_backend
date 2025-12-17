@@ -4,11 +4,11 @@ import com.petlog.social.client.PetClient;
 import com.petlog.social.client.UserClient;
 import com.petlog.social.dto.client.PetClientResponse;
 import com.petlog.social.dto.client.UserClientResponse;
-import com.petlog.social.dto.client.UserSearchListResponse; // DTO 필요
+import com.petlog.social.dto.client.UserSearchListResponse;
 import com.petlog.social.dto.request.FeedRequest;
 import com.petlog.social.dto.response.CommentResponse;
 import com.petlog.social.dto.response.FeedResponse;
-import com.petlog.social.dto.response.SearchResponse; // DTO 필요
+import com.petlog.social.dto.response.SearchResponse;
 import com.petlog.social.entity.Comment;
 import com.petlog.social.entity.Feed;
 import com.petlog.social.entity.FeedHashtag;
@@ -18,7 +18,6 @@ import com.petlog.social.exception.EntityNotFoundException;
 import com.petlog.social.exception.ErrorCode;
 import com.petlog.social.repository.*;
 import com.petlog.social.service.FeedService;
-// ImageService import 제거
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
@@ -45,25 +44,25 @@ public class FeedServiceImpl implements FeedService {
     private final FeedLikeRepository feedLikeRepository;
     private final HashtagRepository hashtagRepository;
     private final FeedHashtagRepository feedHashtagRepository;
+    private final CommentRepository commentRepository;
+
+    // Feign Clients
     private final UserClient userClient;
     private final PetClient petClient;
-    private final CommentRepository commentRepository;
-    // ImageService 제거됨
 
     /**
-     * 피드 작성 (리팩토링 버전)
-     * MultipartFile 대신 User Service에서 받은 URL을 저장
+     * 피드 작성 (이미지 URL 직접 저장)
      */
     @Override
     @Transactional
     public Long createFeed(FeedRequest.CreateFeedDto request) {
-        // 1. 엔티티 생성
+        // 1. 피드 엔티티 생성
         Feed feed = Feed.builder()
                 .userId(request.getUserId())
                 .petId(request.getPetId())
                 .content(request.getContent())
                 .location(request.getLocation())
-                .imageUrl(request.getImageUrl()) // URL 그대로 저장
+                .imageUrl(request.getImageUrl()) // URL 바로 저장
                 .build();
 
         // 2. 저장
@@ -107,7 +106,7 @@ public class FeedServiceImpl implements FeedService {
         List<UserClientResponse> users = new ArrayList<>();
         String hashtagKeyword = query;
 
-        // 1. 유저 검색 (#이 없을 때만)
+        // 1. 유저 검색 (#이 없을 때만 수행)
         if (!query.startsWith("#")) {
             try {
                 UserSearchListResponse response = userClient.searchUsersWithSocial(query);
@@ -159,7 +158,7 @@ public class FeedServiceImpl implements FeedService {
         feedRepository.delete(feed);
     }
 
-    // --- Helper Methods ---
+    // --- Private Helper Methods ---
 
     private void processHashtags(Feed feed, String content) {
         if (content == null || content.isEmpty()) return;
@@ -175,12 +174,12 @@ public class FeedServiceImpl implements FeedService {
         }
     }
 
-    // DTO 변환 (UserClient 연동)
     private FeedResponse.GetFeedDto convertToDto(Feed feed, Long currentUserId) {
         String nickname = "Unknown";
         String profileImage = null;
         String socialId = "";
 
+        // User Service 호출
         try {
             UserClientResponse user = userClient.getUser(feed.getUserId());
             if (user != null) {
@@ -192,6 +191,7 @@ public class FeedServiceImpl implements FeedService {
             log.warn("User fetch failed: {}", e.getMessage());
         }
 
+        // Pet Service 호출
         String petName = null;
         if (feed.getPetId() != null) {
             try {
@@ -206,7 +206,7 @@ public class FeedServiceImpl implements FeedService {
 
         List<Comment> top3Comments = commentRepository.findTop3ByFeedIdAndParentIsNullOrderByCreatedAtDesc(feed.getId());
         List<CommentResponse.CommentDto> recentComments = top3Comments.stream()
-                .map(c -> CommentResponse.CommentDto.of(c, null)) // 미리보기엔 유저정보 생략
+                .map(c -> CommentResponse.CommentDto.of(c, null))
                 .collect(Collectors.toList());
 
         List<String> hashtags = feed.getFeedHashtags().stream()
