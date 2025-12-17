@@ -2,7 +2,7 @@ package com.petlog.social.service;
 
 import com.petlog.social.dto.request.FeedRequest;
 import com.petlog.social.dto.response.FeedResponse;
-import com.petlog.social.dto.response.SearchResponse; // [Import 확인]
+import com.petlog.social.dto.responst .SearchResponse; // [Import 확인]
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 
