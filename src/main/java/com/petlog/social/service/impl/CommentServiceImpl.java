@@ -1,7 +1,7 @@
 package com.petlog.social.service.impl;
 
 import com.petlog.social.client.UserClient;
-import com.petlog.social.dto.client.UserClientResponse; // ✅ DTO Import 추가
+import com.petlog.social.dto.client.UserClientResponse;
 import com.petlog.social.dto.request.CommentRequest;
 import com.petlog.social.dto.response.CommentResponse;
 import com.petlog.social.entity.Comment;
@@ -32,9 +32,9 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional
-    public void createComment(Long feedId, CommentRequest request) {
-        Feed feed = feedRepository.findById(feedId)
-                .orElseThrow(() -> new EntityNotFoundException("Feed", feedId));
+    public Long createComment(CommentRequest.CreateDto request) { // [수정] 파라미터 변경
+        Feed feed = feedRepository.findById(request.getFeedId())
+                .orElseThrow(() -> new EntityNotFoundException("Feed", request.getFeedId()));
 
         Comment parent = null;
         if (request.getParentId() != null) {
@@ -49,13 +49,12 @@ public class CommentServiceImpl implements CommentService {
                 .parent(parent)
                 .build();
 
-        commentRepository.save(comment);
+        return commentRepository.save(comment).getId();
     }
 
     @Override
     public List<CommentResponse.CommentDto> getComments(Long feedId) {
         List<Comment> comments = commentRepository.findAllByFeedIdAndParentIsNullOrderByCreatedAtDesc(feedId);
-
         return comments.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
@@ -68,23 +67,19 @@ public class CommentServiceImpl implements CommentService {
                 .orElseThrow(() -> new EntityNotFoundException("Comment", commentId));
 
         if (!comment.getUserId().equals(userId)) {
-            throw new BusinessException(ErrorCode.OPERATION_NOT_ALLOWED, "본인의 댓글만 삭제할 수 있습니다.");
+            // [수정] ErrorCode 상수명 맞춤
+            throw new BusinessException(ErrorCode.FEED_UNAUTHORIZED);
         }
         commentRepository.delete(comment);
     }
 
-    // DTO 변환 헬퍼 메서드
     private CommentResponse.CommentDto convertToDto(Comment comment) {
-        String nickname = "Unknown";
+        UserClientResponse user = null;
         try {
-            // 🚨 [수정됨] getNickname() -> getUser().getNickname()
-            UserClientResponse userDto = userClient.getUser(comment.getUserId());
-            if (userDto != null) {
-                nickname = userDto.getUsername();
-            }
+            user = userClient.getUser(comment.getUserId());
         } catch (Exception e) {
             log.warn("User Service Error: {}", e.getMessage());
         }
-        return CommentResponse.CommentDto.of(comment, nickname);
+        return CommentResponse.CommentDto.of(comment, user);
     }
 }
