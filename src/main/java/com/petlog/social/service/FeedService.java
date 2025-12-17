@@ -2,11 +2,12 @@ package com.petlog.social.service;
 
 import com.petlog.social.dto.request.FeedRequest;
 import com.petlog.social.dto.response.FeedResponse;
-import com.petlog.social.dto.response.SearchResponse; // [Import 확인]
+import com.petlog.social.dto.response.SearchResponse; // DTO import 필요
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 
 public interface FeedService {
+    // [복구] MultipartFile 제거 -> String imageUrl로 처리
     Long createFeed(FeedRequest.CreateFeedDto request);
 
     Slice<FeedResponse.GetFeedDto> getAllFeeds(Long userId, Pageable pageable);
@@ -24,6 +25,6 @@ public interface FeedService {
     // [복구] 인기 게시물 조회
     Slice<FeedResponse.GetFeedDto> getTrendingFeeds(Long viewerId, Pageable pageable);
 
-    // [복구] 통합 검색 (SearchController에서 호출)
+    // [복구] 통합 검색
     SearchResponse searchAll(String query, Long viewerId, Pageable pageable);
 }

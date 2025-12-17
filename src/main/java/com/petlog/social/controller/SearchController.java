@@ -1,7 +1,7 @@
 package com.petlog.social.controller;
 
-import com.petlog.social.dto.response.FeedResponse;
 import com.petlog.social.dto.response.SearchResponse;
+import com.petlog.social.dto.response.FeedResponse;
 import com.petlog.social.service.FeedService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11,31 +11,29 @@ import org.springframework.data.domain.Slice;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-//왜안되는지몰라서일단 주석달아봄
+
 @RestController
 @RequestMapping("/api/search")
 @RequiredArgsConstructor
-@Tag(name = "Search", description = "검색 및 탐색 API")
+@Tag(name = "Social Search", description = "검색 및 탐색 API")
 public class SearchController {
 
     private final FeedService feedService;
 
     @GetMapping
-    @Operation(summary = "통합 검색", description = "검색어(query)로 유저(소셜ID)와 해시태그 피드를 동시에 조회합니다.")
+    @Operation(summary = "통합 검색", description = "유저(닉네임/소셜ID) 및 해시태그 검색")
     public ResponseEntity<SearchResponse> searchAll(
             @RequestParam String query,
             @RequestParam(required = false) Long viewerId,
-            @PageableDefault(size = 10) Pageable pageable
-    ) {
+            @PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(feedService.searchAll(query, viewerId, pageable));
     }
 
     @GetMapping("/trending")
-    @Operation(summary = "인기 게시물 조회", description = "최근 7일 내 좋아요가 많은 순서대로 피드를 조회합니다.")
-    public ResponseEntity<Slice<FeedResponse.GetFeedDto>> getTrending(
+    @Operation(summary = "인기 게시물 조회", description = "최근 7일간 좋아요 순 랭킹")
+    public ResponseEntity<Slice<FeedResponse.GetFeedDto>> getTrendingFeeds(
             @RequestParam(required = false) Long viewerId,
-            @PageableDefault(size = 10) Pageable pageable
-    ) {
+            @PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(feedService.getTrendingFeeds(viewerId, pageable));
     }
 }
