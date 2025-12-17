@@ -1,0 +1,32 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    # .env 파일이나 환경변수에서 로컬 DB 주소 가져오기
+    # 기본값: jdbc:postgresql://localhost:5432/social_db
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/social_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:1234}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update # 개발 중엔 스키마 자동 변경
+    show-sql: true     # 쿼리 로그 보기
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+# 로컬 테스트용 외부 서비스 주소 (Gateway 포트로 통일하거나 각각 지정)
+openapi:
+  service:
+    url: http://localhost:8000 # Gateway 주소
+
+external:
+  user-service:
+    url: http://localhost:8080 # User Service 주소 (Gateway 경유 시 8000)
+  pet-service:
+    url: http://localhost:8080 # Pet Service 주소
