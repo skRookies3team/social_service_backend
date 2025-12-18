@@ -55,7 +55,7 @@ jobs:
       # values.yaml 이미지 태그 업데이트
       - name: Update image tag in values.yaml
         run: |
-          cd manifest/social-service
+          cd manifest/charts/social-service
           sed -i "s|tag:.*|tag: social-service-${{ github.sha }}|" values.yaml
 
       # 8커밋 & 푸시 (ArgoCD 트리거)
