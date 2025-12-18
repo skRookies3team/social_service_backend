@@ -52,7 +52,7 @@ jobs:
           token: ${{ secrets.MANIFEST_REPO_TOKEN }}
           path: manifest
 
-      # values.yaml 이미지 태그 업데이트
+      # values.yaml 이미지 tag 업데이트
       - name: Update image tag in values.yaml
         run: |
           cd manifest/charts/social-service
