@@ -9,10 +9,7 @@ import com.petlog.social.dto.request.FeedRequest;
 import com.petlog.social.dto.response.CommentResponse;
 import com.petlog.social.dto.response.FeedResponse;
 import com.petlog.social.dto.response.SearchResponse;
-import com.petlog.social.entity.Comment;
-import com.petlog.social.entity.Feed;
-import com.petlog.social.entity.FeedHashtag;
-import com.petlog.social.entity.Hashtag;
+import com.petlog.social.entity.*;
 import com.petlog.social.exception.BusinessException;
 import com.petlog.social.exception.EntityNotFoundException;
 import com.petlog.social.exception.ErrorCode;
@@ -46,29 +43,37 @@ public class FeedServiceImpl implements FeedService {
     private final FeedHashtagRepository feedHashtagRepository;
     private final CommentRepository commentRepository;
 
-    // Feign Clients
+    // [추가] 이미지 리포지토리
+    private final FeedImageRepository feedImageRepository;
+
     private final UserClient userClient;
     private final PetClient petClient;
 
     /**
-     * 피드 작성 (이미지 URL 직접 저장)
+     * 피드 작성 (이미지 여러 장 지원)
      */
     @Override
     @Transactional
     public Long createFeed(FeedRequest.CreateFeedDto request) {
-        // 1. 피드 엔티티 생성
+        // 1. 피드 엔티티 생성 (이미지 제외)
         Feed feed = Feed.builder()
                 .userId(request.getUserId())
                 .petId(request.getPetId())
                 .content(request.getContent())
                 .location(request.getLocation())
-                .imageUrl(request.getImageUrl()) // URL 바로 저장
                 .build();
 
-        // 2. 저장
+        // 2. 이미지 리스트 추가 (Feed 엔티티의 편의 메서드 사용)
+        if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
+            for (String url : request.getImageUrls()) {
+                feed.addImage(url);
+            }
+        }
+
+        // 3. 저장 (Cascade 설정을 통해 FeedImage들도 함께 저장됨)
         Feed savedFeed = feedRepository.save(feed);
 
-        // 3. 해시태그 처리
+        // 4. 해시태그 처리
         processHashtags(savedFeed, request.getContent());
 
         return savedFeed.getId();
@@ -92,7 +97,6 @@ public class FeedServiceImpl implements FeedService {
         return feedSlice.map(feed -> convertToDto(feed, viewerId));
     }
 
-    // [복구] 인기 게시물 조회
     @Override
     public Slice<FeedResponse.GetFeedDto> getTrendingFeeds(Long viewerId, Pageable pageable) {
         LocalDateTime oneWeekAgo = LocalDateTime.now().minusDays(7);
@@ -100,7 +104,6 @@ public class FeedServiceImpl implements FeedService {
         return feedSlice.map(feed -> convertToDto(feed, viewerId));
     }
 
-    // [복구] 통합 검색
     @Override
     public SearchResponse searchAll(String query, Long viewerId, Pageable pageable) {
         List<UserClientResponse> users = new ArrayList<>();
@@ -143,7 +146,10 @@ public class FeedServiceImpl implements FeedService {
         if (!feed.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FEED_UNAUTHORIZED);
         }
-        feed.updateFeed(request.getContent(), request.getImageUrl(), request.getLocation());
+
+        // [수정] 내용 및 이미지 리스트 업데이트
+        feed.updateContent(request.getContent(), request.getLocation());
+        feed.updateImages(request.getImageUrls());
     }
 
     @Override
@@ -191,7 +197,6 @@ public class FeedServiceImpl implements FeedService {
             log.warn("User fetch failed: {}", e.getMessage());
         }
 
-        // Pet Service 호출
         String petName = null;
         if (feed.getPetId() != null) {
             try {
@@ -213,6 +218,11 @@ public class FeedServiceImpl implements FeedService {
                 .map(fh -> fh.getHashtag().getName())
                 .collect(Collectors.toList());
 
+        // [변경] FeedImage 엔티티 리스트 -> String URL 리스트로 변환
+        List<String> imageUrls = feed.getFeedImages().stream()
+                .map(FeedImage::getImageUrl)
+                .collect(Collectors.toList());
+
         return FeedResponse.GetFeedDto.builder()
                 .feedId(feed.getId())
                 .writerId(feed.getUserId())
@@ -221,7 +231,7 @@ public class FeedServiceImpl implements FeedService {
                 .writerSocialId(socialId)
                 .petName(petName)
                 .content(feed.getContent())
-                .imageUrl(feed.getImageUrl())
+                .imageUrls(imageUrls) // [변경] List<String>
                 .location(feed.getLocation())
                 .likeCount(likeCount)
                 .isLiked(isLiked)
