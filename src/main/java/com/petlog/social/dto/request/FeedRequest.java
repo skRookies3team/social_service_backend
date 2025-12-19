@@ -1,10 +1,13 @@
 package com.petlog.social.dto.request;
 
+import com.petlog.social.entity.Visibility;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.List;
 
 public class FeedRequest {
 
@@ -25,8 +28,11 @@ public class FeedRequest {
         @Schema(description = "위치 정보", example = "서울숲")
         private String location;
 
-        @Schema(description = "이미지 URL (User Service에서 업로드 후 받은 URL)", example = "https://s3.../image.jpg")
-        private String imageUrl; // [변경] 파일 대신 URL 문자열을 받음
+        @Schema(description = "이미지 URL 목록", example = "[\"http://url1.jpg\", \"http://url2.jpg\"]")
+        private List<String> imageUrls;
+
+        @Schema(description = "공개 범위 (PUBLIC, FOLLOWER, PRIVATE)", example = "PUBLIC")
+        private Visibility visibility; // Enum 추가 필요
     }
 
     @Getter
@@ -40,8 +46,8 @@ public class FeedRequest {
         @Schema(description = "수정할 내용")
         private String content;
 
-        @Schema(description = "수정할 이미지 URL")
-        private String imageUrl;
+        @Schema(description = "수정할 이미지 URL 목록")
+        private List<String> imageUrls;
 
         @Schema(description = "수정할 위치")
         private String location;
