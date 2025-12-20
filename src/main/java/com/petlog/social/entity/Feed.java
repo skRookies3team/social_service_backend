@@ -27,17 +27,18 @@ public class Feed {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "image_url")
-    private String imageUrl;
+    // [삭제] private String imageUrl;
+
+    // [추가] 이미지 여러 장 (1:N)
+    @OneToMany(mappedBy = "feed", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<FeedImage> feedImages = new ArrayList<>();
 
     @Column
     private String location;
 
-    // MSA 전환: 객체 참조(User) 대신 ID(Long) 저장
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    // MSA 전환: 객체 참조(Pet) 대신 ID(Long) 저장
     @Column(name = "pet_id")
     private Long petId;
 
@@ -53,17 +54,36 @@ public class Feed {
     private LocalDateTime updatedAt;
 
     @Builder
-    public Feed(String content, String imageUrl, String location, Long userId, Long petId) {
+    // [수정] 생성자에서 imageUrl 제거
+    public Feed(String content, String location, Long userId, Long petId) {
         this.content = content;
-        this.imageUrl = imageUrl;
         this.location = location;
         this.userId = userId;
         this.petId = petId;
     }
 
-    public void updateFeed(String content, String imageUrl, String location) {
+    // [추가] 이미지 추가 메서드 (연관관계 편의 메서드)
+    public void addImage(String url) {
+        FeedImage image = FeedImage.builder()
+                .imageUrl(url)
+                .feed(this)
+                .build();
+        this.feedImages.add(image);
+    }
+
+    // [추가] 이미지 목록 전체 교체 (수정 시 사용)
+    public void updateImages(List<String> newUrls) {
+        this.feedImages.clear(); // 기존 이미지 삭제 (orphanRemoval = true로 인해 DB에서도 삭제됨)
+        if (newUrls != null) {
+            for (String url : newUrls) {
+                addImage(url);
+            }
+        }
+    }
+
+    // [수정] 내용 및 위치 수정
+    public void updateContent(String content, String location) {
         this.content = content;
-        this.imageUrl = imageUrl;
         this.location = location;
     }
 }

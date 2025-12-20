@@ -30,8 +30,8 @@ public class FeedResponse {
         private String petName;
         @Schema(description = "내용")
         private String content;
-        @Schema(description = "이미지 URL")
-        private String imageUrl;
+        @Schema(description = "이미지 URL 목록")
+        private List<String> imageUrls;
         @Schema(description = "위치")
         private String location;
 
