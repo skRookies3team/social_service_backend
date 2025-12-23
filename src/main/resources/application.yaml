@@ -2,7 +2,9 @@ spring:
   application:
     name: social-service
 
-  # Feign Client 공통 설정
+  profiles:
+    active: dev
+
   cloud:
     openfeign:
       client:
@@ -11,9 +13,9 @@ spring:
             connectTimeout: 5000
             readTimeout: 5000
 
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
 server:
   port: 8083
   shutdown: graceful
-
-# 기본 프로필 설정 (기본적으로 dev 실행)
-spring.profiles.active: dev
