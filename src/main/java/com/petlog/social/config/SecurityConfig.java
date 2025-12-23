@@ -30,7 +30,9 @@ public class SecurityConfig {
                        // 헬스체크 (ALB / K8s 필수)
                        .requestMatchers(
                                 "/actuator/health",
-                                "/actuator/health/**"
+                               "/actuator/health/**",
+                               "/api/actuator/health",
+                               "/api/actuator/health/**"
                        ).permitAll()
 
                         // Swagger 관련 경로 모두 허용 (로그인 없이 접속 가능)
