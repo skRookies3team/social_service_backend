@@ -109,11 +109,14 @@ public class FeedServiceImpl implements FeedService {
         List<UserClientResponse> users = new ArrayList<>();
         String hashtagKeyword = query;
 
-        // 1. 유저 검색 (#이 없을 때만 수행)
+        // 1. 유저 검색 (#이 없을 때 -> keyword 파라미터로 전송)
         if (!query.startsWith("#")) {
             try {
+                // UserClient의 파라미터명이 keyword로 바뀌었으므로, query 값을 그대로 넘김
                 UserSearchListResponse response = userClient.searchUsersWithSocial(query);
-                if (response != null && response.getUsers() != null) {
+
+                // User Service의 응답 구조(isEmpty, users)에 맞춰 데이터 추출
+                if (response != null && !response.isEmpty() && response.getUsers() != null) {
                     users = response.getUsers();
                 }
             } catch (Exception e) {
@@ -123,7 +126,7 @@ public class FeedServiceImpl implements FeedService {
             hashtagKeyword = query.substring(1); // # 제거
         }
 
-        // 2. 해시태그 피드 검색
+        // 2. 해시태그 피드 검색 (기존 유지)
         Slice<Feed> feeds = feedRepository.findByHashtag(hashtagKeyword, pageable);
         Slice<FeedResponse.GetFeedDto> feedDtos = feeds.map(feed -> convertToDto(feed, viewerId));
 
