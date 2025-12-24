@@ -21,14 +21,14 @@ public class SearchController {
     private final FeedService feedService;
 
     @GetMapping
-    @Operation(summary = "통합 검색", description = "유저(닉네임) 또는 해시태그(#)로 검색합니다.")
+    // [수정] 설명 변경: 유저(social) 로 검색
+    @Operation(summary = "통합 검색", description = "유저(social) 또는 해시태그(#)로 검색합니다.")
     public ResponseEntity<SearchResponse> searchAll(
             @RequestParam String query,
             @RequestParam(required = false) Long viewerId,
             @PageableDefault(size = 10) Pageable pageable) {
         return ResponseEntity.ok(feedService.searchAll(query, viewerId, pageable));
-    }
-
+    }   
     @GetMapping("/trending")
     @Operation(summary = "인기 게시물 조회", description = "최근 7일간 좋아요를 많이 받은 순서대로 조회합니다.")
     public ResponseEntity<Slice<FeedResponse.GetFeedDto>> getTrendingFeeds(

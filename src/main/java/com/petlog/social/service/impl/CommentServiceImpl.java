@@ -28,7 +28,7 @@ public class CommentServiceImpl implements CommentService {
 
     private final CommentRepository commentRepository;
     private final FeedRepository feedRepository;
-    private final UserClient userClient; // [추가] 유저 정보 조회용
+    private final UserClient userClient;
 
     @Override
     @Transactional
@@ -57,13 +57,45 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public List<CommentResponse.CommentDto> getComments(Long feedId) {
-        // 해당 피드의 모든 댓글 조회
-        // (만약 대댓글 구조를 위해 부모만 가져오고 싶다면 리포지토리 메서드 수정 필요)
+        // 1. 부모 댓글(최상위 댓글)만 DB에서 조회
+        // JPA의 @OneToMany 관계 설정을 통해 children은 Lazy Loading으로 가져옵니다.
         List<Comment> comments = commentRepository.findAllByFeedIdAndParentIsNullOrderByCreatedAtDesc(feedId);
 
         return comments.stream()
-                .map(this::convertToDto)
+                .map(comment -> {
+                    // 2. 부모 댓글 유저 정보 조회 및 DTO 변환
+                    UserClientResponse user = fetchUserSafe(comment.getUserId());
+                    CommentResponse.CommentDto dto = CommentResponse.CommentDto.of(comment, user);
+
+                    // 3. 대댓글(자식) 유저 정보 조회 및 DTO 변환
+                    if (comment.getChildren() != null) {
+                        List<CommentResponse.CommentDto> childDtos = comment.getChildren().stream()
+                                .map(child -> {
+                                    UserClientResponse childUser = fetchUserSafe(child.getUserId());
+                                    return CommentResponse.CommentDto.of(child, childUser);
+                                })
+                                .collect(Collectors.toList());
+
+                        dto.setChildren(childDtos);
+                    }
+
+                    return dto;
+                })
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void updateComment(Long commentId, CommentRequest.UpdateDto request, Long userId) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new EntityNotFoundException("Comment", commentId));
+
+        // 작성자 본인 확인
+        if (!comment.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FEED_UNAUTHORIZED);
+        }
+
+        comment.updateContent(request.getContent());
     }
 
     @Override
@@ -72,20 +104,23 @@ public class CommentServiceImpl implements CommentService {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new EntityNotFoundException("Comment", commentId));
 
+        // 작성자 본인 확인
         if (!comment.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FEED_UNAUTHORIZED);
         }
         commentRepository.delete(comment);
     }
 
-    // [리팩토링] DTO 변환 시 User Service 호출
-    private CommentResponse.CommentDto convertToDto(Comment comment) {
-        UserClientResponse user = null;
+    /**
+     * 유저 정보 조회 안전 처리 헬퍼 메서드
+     * User Service 호출 실패 시에도 댓글 목록 조회는 성공하도록 null 반환 처리
+     */
+    private UserClientResponse fetchUserSafe(Long userId) {
         try {
-            user = userClient.getUser(comment.getUserId());
+            return userClient.getUser(userId);
         } catch (Exception e) {
-            log.warn("Comment User fetch failed (userId={}): {}", comment.getUserId(), e.getMessage());
+            log.warn("Comment User fetch failed (userId={}): {}", userId, e.getMessage());
+            return null;
         }
-        return CommentResponse.CommentDto.of(comment, user);
     }
 }

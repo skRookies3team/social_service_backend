@@ -8,9 +8,12 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class UserClientResponse {
+    // User Service의 GetSearchedUserDto 필드와 일치
     private Long userId;
-    private String email;
-    private String username;     // 닉네임
-    private String profileImage; // 프로필 이미지 URL
-    private String social;       // 소셜 아이디 (ex: @choco_mom)
+    private String username;
+    private String genderType; // Enum이면 String으로 매핑되거나 별도 처리 필요
+    private String profileImage;
+    private String social;
+    private String statusMessage;
+    private Integer age;
 }

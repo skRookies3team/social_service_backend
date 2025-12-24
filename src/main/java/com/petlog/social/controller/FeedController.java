@@ -30,6 +30,8 @@ public class FeedController {
     public ResponseEntity<Long> createFeed(
             @Valid @RequestBody FeedRequest.CreateFeedDto request
     ) {
+        System.out.println("🔥 [디버깅] 받은 이미지 리스트: " + request.getImageUrls());
+
         Long feedId = feedService.createFeed(request);
         return ResponseEntity.created(URI.create("/api/feeds/" + feedId)).body(feedId);
     }
