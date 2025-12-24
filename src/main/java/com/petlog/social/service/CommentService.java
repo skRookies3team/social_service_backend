@@ -10,5 +10,7 @@ public interface CommentService {
 
     List<CommentResponse.CommentDto> getComments(Long feedId);
 
+    void updateComment(Long commentId, CommentRequest.UpdateDto request, Long userId);
+
     void deleteComment(Long commentId, Long userId);
 }
