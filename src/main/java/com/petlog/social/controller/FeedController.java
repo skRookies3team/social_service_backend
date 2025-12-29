@@ -40,7 +40,7 @@ public class FeedController {
     @Operation(summary = "전체 피드 조회")
     public ResponseEntity<Slice<FeedResponse.GetFeedDto>> getAllFeeds(
             @PathVariable Long userId,
-            @PageableDefault(size = 10) Pageable pageable
+            @PageableDefault(size = 5) Pageable pageable
     ) {
         return ResponseEntity.ok(feedService.getAllFeeds(userId, pageable));
     }
