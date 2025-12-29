@@ -9,6 +9,7 @@ import com.petlog.social.dto.request.FeedRequest;
 import com.petlog.social.dto.response.CommentResponse;
 import com.petlog.social.dto.response.FeedResponse;
 import com.petlog.social.dto.response.SearchResponse;
+import com.petlog.social.repository.BlockRepository;
 import com.petlog.social.entity.*;
 import com.petlog.social.exception.BusinessException;
 import com.petlog.social.exception.EntityNotFoundException;
@@ -42,6 +43,7 @@ public class FeedServiceImpl implements FeedService {
     private final HashtagRepository hashtagRepository;
     private final FeedHashtagRepository feedHashtagRepository;
     private final CommentRepository commentRepository;
+    private final BlockRepository blockRepository;
 
     // [추가] 이미지 리포지토리
     private final FeedImageRepository feedImageRepository;
@@ -79,9 +81,24 @@ public class FeedServiceImpl implements FeedService {
         return savedFeed.getId();
     }
 
+    /**
+     * 전체 피드 조회 (차단 필터링 적용)
+     */
     @Override
     public Slice<FeedResponse.GetFeedDto> getAllFeeds(Long currentUserId, Pageable pageable) {
-        Slice<Feed> feedSlice = feedRepository.findAllByOrderByCreatedAtDesc(pageable);
+        // 1. 내가 차단한 유저 ID 목록 조회
+        List<Long> blockedUserIds = blockRepository.findBlockedIdsByBlockerId(currentUserId);
+
+        Slice<Feed> feedSlice;
+        if (blockedUserIds.isEmpty()) {
+            // 차단한 사람이 없으면 기존대로 전체 조회
+            feedSlice = feedRepository.findAllByOrderByCreatedAtDesc(pageable);
+        } else {
+            // 차단한 유저(blockedUserIds)를 제외하고 조회
+            // [주의] FeedRepository에 해당 메서드가 정의되어 있어야 합니다.
+            feedSlice = feedRepository.findAllByUserIdNotInOrderByCreatedAtDesc(blockedUserIds, pageable);
+        }
+
         return feedSlice.map(feed -> convertToDto(feed, currentUserId));
     }
 
@@ -100,7 +117,19 @@ public class FeedServiceImpl implements FeedService {
     @Override
     public Slice<FeedResponse.GetFeedDto> getTrendingFeeds(Long viewerId, Pageable pageable) {
         LocalDateTime oneWeekAgo = LocalDateTime.now().minusDays(7);
-        Slice<Feed> feedSlice = feedRepository.findTrendingFeeds(oneWeekAgo, pageable);
+
+        // 차단 목록 조회
+        List<Long> blockedUserIds = blockRepository.findBlockedIdsByBlockerId(viewerId);
+
+        Slice<Feed> feedSlice;
+        if (blockedUserIds.isEmpty()) {
+            // 차단한 사람이 없으면 기본 메서드
+            feedSlice = feedRepository.findTrendingFeeds(oneWeekAgo, pageable);
+        } else {
+            // 차단한 사람이 있으면 필터링 메서드 호출
+            feedSlice = feedRepository.findTrendingFeedsBlocked(oneWeekAgo, blockedUserIds, pageable);
+        }
+
         return feedSlice.map(feed -> convertToDto(feed, viewerId));
     }
 
@@ -109,11 +138,14 @@ public class FeedServiceImpl implements FeedService {
         List<UserClientResponse> users = new ArrayList<>();
         String hashtagKeyword = query;
 
-        // 1. 유저 검색 (#이 없을 때만 수행)
+        // 1. 유저 검색 (#이 없을 때 -> keyword 파라미터로 전송)
         if (!query.startsWith("#")) {
             try {
+                // UserClient의 파라미터명이 keyword로 바뀌었으므로, query 값을 그대로 넘김
                 UserSearchListResponse response = userClient.searchUsersWithSocial(query);
-                if (response != null && response.getUsers() != null) {
+
+                // User Service의 응답 구조(isEmpty, users)에 맞춰 데이터 추출
+                if (response != null && !response.isEmpty() && response.getUsers() != null) {
                     users = response.getUsers();
                 }
             } catch (Exception e) {
@@ -123,7 +155,7 @@ public class FeedServiceImpl implements FeedService {
             hashtagKeyword = query.substring(1); // # 제거
         }
 
-        // 2. 해시태그 피드 검색
+        // 2. 해시태그 피드 검색 (기존 유지)
         Slice<Feed> feeds = feedRepository.findByHashtag(hashtagKeyword, pageable);
         Slice<FeedResponse.GetFeedDto> feedDtos = feeds.map(feed -> convertToDto(feed, viewerId));
 

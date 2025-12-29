@@ -50,4 +50,15 @@ public class CommentController {
         commentService.deleteComment(commentId, userId);
         return ResponseEntity.ok("댓글이 삭제되었습니다.");
     }
+
+    @PutMapping("/comments/{commentId}")
+    @Operation(summary = "댓글 수정")
+    public ResponseEntity<Void> updateComment(
+            @PathVariable Long commentId,
+            @Valid @RequestBody CommentRequest.UpdateDto request) { // UpdateDto 필요
+
+        // 서비스 호출 (ServiceImpl에 이미 구현해드린 updateComment 사용)
+        commentService.updateComment(commentId, request, request.getUserId());
+        return ResponseEntity.ok().build();
+    }
 }
