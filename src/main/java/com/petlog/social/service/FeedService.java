@@ -2,9 +2,12 @@ package com.petlog.social.service;
 
 import com.petlog.social.dto.request.FeedRequest;
 import com.petlog.social.dto.response.FeedResponse;
+import com.petlog.social.dto.response.SearchHashtagResponse;
 import com.petlog.social.dto.response.SearchResponse;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+
+import java.util.List;
 
 public interface FeedService {
     // [리팩토링] 이미지 파일 파라미터 제거
@@ -27,4 +30,6 @@ public interface FeedService {
 
     // [복구] 통합 검색 (유저 + 해시태그)
     SearchResponse searchAll(String query, Long viewerId, Pageable pageable);
+
+    List<SearchHashtagResponse> searchHashtags(String query);
 }

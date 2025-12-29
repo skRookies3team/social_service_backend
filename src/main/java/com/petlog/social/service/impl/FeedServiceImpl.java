@@ -8,6 +8,7 @@ import com.petlog.social.dto.client.UserSearchListResponse;
 import com.petlog.social.dto.request.FeedRequest;
 import com.petlog.social.dto.response.CommentResponse;
 import com.petlog.social.dto.response.FeedResponse;
+import com.petlog.social.dto.response.SearchHashtagResponse;
 import com.petlog.social.dto.response.SearchResponse;
 import com.petlog.social.repository.BlockRepository;
 import com.petlog.social.entity.*;
@@ -138,13 +139,10 @@ public class FeedServiceImpl implements FeedService {
         List<UserClientResponse> users = new ArrayList<>();
         String hashtagKeyword = query;
 
-        // 1. 유저 검색 (#이 없을 때 -> keyword 파라미터로 전송)
+        // 1. 유저 검색 (#이 없을 때만 수행)
         if (!query.startsWith("#")) {
             try {
-                // UserClient의 파라미터명이 keyword로 바뀌었으므로, query 값을 그대로 넘김
                 UserSearchListResponse response = userClient.searchUsersWithSocial(query);
-
-                // User Service의 응답 구조(isEmpty, users)에 맞춰 데이터 추출
                 if (response != null && !response.isEmpty() && response.getUsers() != null) {
                     users = response.getUsers();
                 }
@@ -152,14 +150,32 @@ public class FeedServiceImpl implements FeedService {
                 log.error("User Search Failed: {}", e.getMessage());
             }
         } else {
-            hashtagKeyword = query.substring(1); // # 제거
+            // #으로 시작하면 # 제거 후 키워드로 사용
+            hashtagKeyword = query.substring(1);
         }
 
-        // 2. 해시태그 피드 검색 (기존 유지)
+        // 2. 해시태그 피드 검색 (기존 로직)
         Slice<Feed> feeds = feedRepository.findByHashtag(hashtagKeyword, pageable);
         Slice<FeedResponse.GetFeedDto> feedDtos = feeds.map(feed -> convertToDto(feed, viewerId));
 
-        return SearchResponse.of(users, feedDtos);
+        // 3. [추가] 해시태그 자체 검색 (자동완성/추천용)
+        // 검색어(hashtagKeyword)로 해시태그 목록도 조회해서 같이 내려줍니다.
+        List<SearchHashtagResponse> hashtags = searchHashtags(hashtagKeyword);
+
+        // [수정] 인자 3개 (users, feeds, hashtags) 전달
+        return SearchResponse.of(users, feedDtos, hashtags);
+    }
+
+    @Override
+    public List<SearchHashtagResponse> searchHashtags(String query) {
+        if (query == null || query.isBlank()) {
+            return new ArrayList<>();
+        }
+        // 검색어에서 '#' 제거 (프론트에서 처리해서 보내더라도 안전하게 한 번 더 처리)
+        String cleanQuery = query.replace("#", "");
+
+        // 상위 10개만 검색 (Pageable.ofSize(10))
+        return hashtagRepository.searchHashtagsByName(cleanQuery, Pageable.ofSize(10));
     }
 
     @Override
