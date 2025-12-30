@@ -27,9 +27,6 @@ public class Feed {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    // [삭제] private String imageUrl;
-
-    // [추가] 이미지 여러 장 (1:N)
     @OneToMany(mappedBy = "feed", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<FeedImage> feedImages = new ArrayList<>();
 
@@ -41,6 +38,11 @@ public class Feed {
 
     @Column(name = "pet_id")
     private Long petId;
+
+    // [수정] columnDefinition 추가 -> 기존 데이터에 'PUBLIC' 문자열을 기본값으로 채워넣음
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "varchar(255) default 'PUBLIC'")
+    private Visibility visibility = Visibility.PUBLIC;
 
     @OneToMany(mappedBy = "feed", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<FeedHashtag> feedHashtags = new ArrayList<>();
@@ -54,15 +56,18 @@ public class Feed {
     private LocalDateTime updatedAt;
 
     @Builder
-    // [수정] 생성자에서 imageUrl 제거
-    public Feed(String content, String location, Long userId, Long petId) {
+    public Feed(String content, String location, Long userId, Long petId, Visibility visibility) {
         this.content = content;
         this.location = location;
         this.userId = userId;
         this.petId = petId;
+        if (visibility != null) {
+            this.visibility = visibility;
+        }
     }
 
-    // [추가] 이미지 추가 메서드 (연관관계 편의 메서드)
+    // --- 연관관계 및 편의 메서드 ---
+
     public void addImage(String url) {
         FeedImage image = FeedImage.builder()
                 .imageUrl(url)
@@ -71,9 +76,8 @@ public class Feed {
         this.feedImages.add(image);
     }
 
-    // [추가] 이미지 목록 전체 교체 (수정 시 사용)
     public void updateImages(List<String> newUrls) {
-        this.feedImages.clear(); // 기존 이미지 삭제 (orphanRemoval = true로 인해 DB에서도 삭제됨)
+        this.feedImages.clear();
         if (newUrls != null) {
             for (String url : newUrls) {
                 addImage(url);
@@ -81,9 +85,12 @@ public class Feed {
         }
     }
 
-    // [수정] 내용 및 위치 수정
     public void updateContent(String content, String location) {
         this.content = content;
         this.location = location;
+    }
+
+    public void updateVisibility(Visibility visibility) {
+        this.visibility = visibility;
     }
 }
