@@ -4,7 +4,6 @@ import com.petlog.social.dto.request.FeedRequest;
 import com.petlog.social.dto.response.FeedResponse;
 import com.petlog.social.service.FeedService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +39,7 @@ public class FeedController {
     @Operation(summary = "전체 피드 조회")
     public ResponseEntity<Slice<FeedResponse.GetFeedDto>> getAllFeeds(
             @PathVariable Long userId,
-            @PageableDefault(size = 10) Pageable pageable
+            @PageableDefault(size = 5) Pageable pageable
     ) {
         return ResponseEntity.ok(feedService.getAllFeeds(userId, pageable));
     }
@@ -87,5 +86,26 @@ public class FeedController {
             @PageableDefault(size = 10) Pageable pageable
     ) {
         return ResponseEntity.ok(feedService.getFollowingFeeds(viewerId, pageable));
+    }
+
+    // [추가] 해시태그 피드 검색 (알고리즘 정렬)
+    @GetMapping("/search/hashtag")
+    @Operation(summary = "해시태그 피드 검색 (알고리즘 정렬)", description = "특정 해시태그가 포함된 피드를 알고리즘 순서(좋아요+댓글 가중치)로 조회합니다.")
+    public ResponseEntity<Slice<FeedResponse.GetFeedDto>> searchFeedsByHashtag(
+            @RequestParam String tag,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId, // 게스트 허용
+            @PageableDefault(size = 20) Pageable pageable
+    ) {
+        return ResponseEntity.ok(feedService.searchFeedsByHashtagAlgorithm(tag, userId, pageable));
+    }
+
+    // [추가] 인기 피드 조회 (알고리즘 정렬)
+    @GetMapping("/popular")
+    @Operation(summary = "인기 피드 조회 (알고리즘 정렬)", description = "전체 피드 중 인기 있는 피드를 알고리즘 순서로 조회합니다.")
+    public ResponseEntity<Slice<FeedResponse.GetFeedDto>> getPopularFeeds(
+            @RequestHeader(value = "X-User-Id", required = false) Long userId, // 게스트 허용
+            @PageableDefault(size = 20) Pageable pageable
+    ) {
+        return ResponseEntity.ok(feedService.getPopularFeedsAlgorithm(userId, pageable));
     }
 }

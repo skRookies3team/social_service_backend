@@ -8,8 +8,8 @@ import com.petlog.social.dto.client.UserSearchListResponse;
 import com.petlog.social.dto.request.FeedRequest;
 import com.petlog.social.dto.response.CommentResponse;
 import com.petlog.social.dto.response.FeedResponse;
+import com.petlog.social.dto.response.SearchHashtagResponse;
 import com.petlog.social.dto.response.SearchResponse;
-import com.petlog.social.repository.BlockRepository;
 import com.petlog.social.entity.*;
 import com.petlog.social.exception.BusinessException;
 import com.petlog.social.exception.EntityNotFoundException;
@@ -44,8 +44,6 @@ public class FeedServiceImpl implements FeedService {
     private final FeedHashtagRepository feedHashtagRepository;
     private final CommentRepository commentRepository;
     private final BlockRepository blockRepository;
-
-    // [추가] 이미지 리포지토리
     private final FeedImageRepository feedImageRepository;
 
     private final UserClient userClient;
@@ -57,7 +55,7 @@ public class FeedServiceImpl implements FeedService {
     @Override
     @Transactional
     public Long createFeed(FeedRequest.CreateFeedDto request) {
-        // 1. 피드 엔티티 생성 (이미지 제외)
+        // 1. 피드 엔티티 생성
         Feed feed = Feed.builder()
                 .userId(request.getUserId())
                 .petId(request.getPetId())
@@ -65,14 +63,14 @@ public class FeedServiceImpl implements FeedService {
                 .location(request.getLocation())
                 .build();
 
-        // 2. 이미지 리스트 추가 (Feed 엔티티의 편의 메서드 사용)
+        // 2. 이미지 리스트 추가
         if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
             for (String url : request.getImageUrls()) {
                 feed.addImage(url);
             }
         }
 
-        // 3. 저장 (Cascade 설정을 통해 FeedImage들도 함께 저장됨)
+        // 3. 저장
         Feed savedFeed = feedRepository.save(feed);
 
         // 4. 해시태그 처리
@@ -86,16 +84,12 @@ public class FeedServiceImpl implements FeedService {
      */
     @Override
     public Slice<FeedResponse.GetFeedDto> getAllFeeds(Long currentUserId, Pageable pageable) {
-        // 1. 내가 차단한 유저 ID 목록 조회
         List<Long> blockedUserIds = blockRepository.findBlockedIdsByBlockerId(currentUserId);
 
         Slice<Feed> feedSlice;
         if (blockedUserIds.isEmpty()) {
-            // 차단한 사람이 없으면 기존대로 전체 조회
             feedSlice = feedRepository.findAllByOrderByCreatedAtDesc(pageable);
         } else {
-            // 차단한 유저(blockedUserIds)를 제외하고 조회
-            // [주의] FeedRepository에 해당 메서드가 정의되어 있어야 합니다.
             feedSlice = feedRepository.findAllByUserIdNotInOrderByCreatedAtDesc(blockedUserIds, pageable);
         }
 
@@ -117,16 +111,12 @@ public class FeedServiceImpl implements FeedService {
     @Override
     public Slice<FeedResponse.GetFeedDto> getTrendingFeeds(Long viewerId, Pageable pageable) {
         LocalDateTime oneWeekAgo = LocalDateTime.now().minusDays(7);
-
-        // 차단 목록 조회
         List<Long> blockedUserIds = blockRepository.findBlockedIdsByBlockerId(viewerId);
 
         Slice<Feed> feedSlice;
         if (blockedUserIds.isEmpty()) {
-            // 차단한 사람이 없으면 기본 메서드
             feedSlice = feedRepository.findTrendingFeeds(oneWeekAgo, pageable);
         } else {
-            // 차단한 사람이 있으면 필터링 메서드 호출
             feedSlice = feedRepository.findTrendingFeedsBlocked(oneWeekAgo, blockedUserIds, pageable);
         }
 
@@ -138,13 +128,10 @@ public class FeedServiceImpl implements FeedService {
         List<UserClientResponse> users = new ArrayList<>();
         String hashtagKeyword = query;
 
-        // 1. 유저 검색 (#이 없을 때 -> keyword 파라미터로 전송)
+        // 1. 유저 검색 (#이 없을 때만 수행)
         if (!query.startsWith("#")) {
             try {
-                // UserClient의 파라미터명이 keyword로 바뀌었으므로, query 값을 그대로 넘김
                 UserSearchListResponse response = userClient.searchUsersWithSocial(query);
-
-                // User Service의 응답 구조(isEmpty, users)에 맞춰 데이터 추출
                 if (response != null && !response.isEmpty() && response.getUsers() != null) {
                     users = response.getUsers();
                 }
@@ -152,14 +139,26 @@ public class FeedServiceImpl implements FeedService {
                 log.error("User Search Failed: {}", e.getMessage());
             }
         } else {
-            hashtagKeyword = query.substring(1); // # 제거
+            hashtagKeyword = query.substring(1);
         }
 
-        // 2. 해시태그 피드 검색 (기존 유지)
+        // 2. 해시태그 피드 검색 (기본 최신순)
         Slice<Feed> feeds = feedRepository.findByHashtag(hashtagKeyword, pageable);
         Slice<FeedResponse.GetFeedDto> feedDtos = feeds.map(feed -> convertToDto(feed, viewerId));
 
-        return SearchResponse.of(users, feedDtos);
+        // 3. 해시태그 목록 검색
+        List<SearchHashtagResponse> hashtags = searchHashtags(hashtagKeyword);
+
+        return SearchResponse.of(users, feedDtos, hashtags);
+    }
+
+    @Override
+    public List<SearchHashtagResponse> searchHashtags(String query) {
+        if (query == null || query.isBlank()) {
+            return new ArrayList<>();
+        }
+        String cleanQuery = query.replace("#", "");
+        return hashtagRepository.searchHashtagsByName(cleanQuery, Pageable.ofSize(10));
     }
 
     @Override
@@ -179,7 +178,6 @@ public class FeedServiceImpl implements FeedService {
             throw new BusinessException(ErrorCode.FEED_UNAUTHORIZED);
         }
 
-        // [수정] 내용 및 이미지 리스트 업데이트
         feed.updateContent(request.getContent(), request.getLocation());
         feed.updateImages(request.getImageUrls());
     }
@@ -194,6 +192,37 @@ public class FeedServiceImpl implements FeedService {
             throw new BusinessException(ErrorCode.FEED_UNAUTHORIZED);
         }
         feedRepository.delete(feed);
+    }
+
+    // --- [추가] 해시태그 검색 (알고리즘 정렬) ---
+    @Override
+    public Slice<FeedResponse.GetFeedDto> searchFeedsByHashtagAlgorithm(String hashtag, Long userId, Pageable pageable) {
+        String searchTag = hashtag.startsWith("#") ? hashtag.substring(1) : hashtag;
+        List<Long> blockedUserIds = blockRepository.findBlockedIdsByBlockerId(userId);
+
+        Slice<Feed> feeds;
+        if (blockedUserIds.isEmpty()) {
+            feeds = feedRepository.findByHashtagOrderByAlgorithm(searchTag, pageable);
+        } else {
+            feeds = feedRepository.findByHashtagOrderByAlgorithmBlocked(searchTag, blockedUserIds, pageable);
+        }
+
+        return feeds.map(feed -> convertToDto(feed, userId));
+    }
+
+    // --- [추가] 인기 게시물 조회 (알고리즘 정렬) ---
+    @Override
+    public Slice<FeedResponse.GetFeedDto> getPopularFeedsAlgorithm(Long userId, Pageable pageable) {
+        List<Long> blockedUserIds = blockRepository.findBlockedIdsByBlockerId(userId);
+
+        Slice<Feed> feeds;
+        if (blockedUserIds.isEmpty()) {
+            feeds = feedRepository.findPopularFeedsOrderByAlgorithm(pageable);
+        } else {
+            feeds = feedRepository.findPopularFeedsOrderByAlgorithmBlocked(blockedUserIds, pageable);
+        }
+
+        return feeds.map(feed -> convertToDto(feed, userId));
     }
 
     // --- Private Helper Methods ---
@@ -250,7 +279,6 @@ public class FeedServiceImpl implements FeedService {
                 .map(fh -> fh.getHashtag().getName())
                 .collect(Collectors.toList());
 
-        // [변경] FeedImage 엔티티 리스트 -> String URL 리스트로 변환
         List<String> imageUrls = feed.getFeedImages().stream()
                 .map(FeedImage::getImageUrl)
                 .collect(Collectors.toList());
@@ -263,7 +291,7 @@ public class FeedServiceImpl implements FeedService {
                 .writerSocialId(socialId)
                 .petName(petName)
                 .content(feed.getContent())
-                .imageUrls(imageUrls) // [변경] List<String>
+                .imageUrls(imageUrls)
                 .location(feed.getLocation())
                 .likeCount(likeCount)
                 .isLiked(isLiked)
