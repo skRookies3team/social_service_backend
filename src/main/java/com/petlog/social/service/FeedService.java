@@ -32,4 +32,9 @@ public interface FeedService {
     SearchResponse searchAll(String query, Long viewerId, Pageable pageable);
 
     List<SearchHashtagResponse> searchHashtags(String query);
-}
+
+    // [수정] 해시태그 피드 검색 (알고리즘 정렬) - 반환 타입 일치시킴
+    Slice<FeedResponse.GetFeedDto> searchFeedsByHashtagAlgorithm(String hashtag, Long userId, Pageable pageable);
+
+    // [수정] 인기 피드 조회 (알고리즘 정렬) - 반환 타입 일치시킴
+    Slice<FeedResponse.GetFeedDto> getPopularFeedsAlgorithm(Long userId, Pageable pageable);}
