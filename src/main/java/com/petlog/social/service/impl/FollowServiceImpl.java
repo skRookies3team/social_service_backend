@@ -30,20 +30,16 @@ public class FollowServiceImpl implements FollowService {
     @Override
     @Transactional
     public boolean toggleFollow(Long followerId, Long targetId) {
-        // 자기 자신 팔로우 방지
         if (followerId.equals(targetId)) {
             throw new BusinessException(ErrorCode.OPERATION_NOT_ALLOWED, "자기 자신을 팔로우할 수 없습니다.");
         }
 
-        // 이미 팔로우 중인지 확인
         Optional<Follow> existingFollow = followRepository.findByFollowerIdAndFollowingId(followerId, targetId);
 
         if (existingFollow.isPresent()) {
-            // 이미 했다면 -> 취소 (언팔로우)
             followRepository.delete(existingFollow.get());
             return false;
         } else {
-            // 안 했다면 -> 저장 (팔로우)
             followRepository.save(Follow.builder()
                     .followerId(followerId)
                     .followingId(targetId)
@@ -69,9 +65,13 @@ public class FollowServiceImpl implements FollowService {
         return followRepository.findAllByFollowingId(userId).stream()
                 .map(follow -> {
                     Long targetId = follow.getFollowerId();
+                    // [수정] 유저 정보 전체 조회
+                    UserClientResponse userInfo = getUserInfo(targetId);
+
                     return FollowListResponse.builder()
                             .userId(targetId)
-                            .nickname(getUserNickname(targetId))
+                            .nickname(userInfo != null ? userInfo.getUsername() : "Unknown")
+                            .profileImageUrl(userInfo != null ? userInfo.getProfileImage() : null) // [추가] 이미지 매핑
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -83,24 +83,28 @@ public class FollowServiceImpl implements FollowService {
         return followRepository.findAllByFollowerId(userId).stream()
                 .map(follow -> {
                     Long targetId = follow.getFollowingId();
+                    // [수정] 유저 정보 전체 조회
+                    UserClientResponse userInfo = getUserInfo(targetId);
+
                     return FollowListResponse.builder()
                             .userId(targetId)
-                            .nickname(getUserNickname(targetId))
+                            .nickname(userInfo != null ? userInfo.getUsername() : "Unknown")
+                            .profileImageUrl(userInfo != null ? userInfo.getProfileImage() : null) // [추가] 이미지 매핑
                             .build();
                 })
                 .collect(Collectors.toList());
     }
 
-    private String getUserNickname(Long userId) {
+    // [수정] 메서드 변경: 닉네임 문자열 대신 유저 정보 객체(UserClientResponse) 반환
+    private UserClientResponse getUserInfo(Long userId) {
         try {
-            // getUser() 호출 후 닉네임 추출
             UserClientResponse userDto = userClient.getUser(userId);
             if (userDto != null) {
-                return userDto.getUsername();
+                return userDto;
             }
         } catch (Exception e) {
             log.warn("User Service Error: {}", e.getMessage());
         }
-        return "Unknown";
+        return null;
     }
 }
