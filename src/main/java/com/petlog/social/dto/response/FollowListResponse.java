@@ -12,4 +12,7 @@ public class FollowListResponse {
 
     @Schema(description = "유저 닉네임")
     private String nickname;
+
+    @Schema(description = "프로필 이미지 URL")
+    private String profileImageUrl; // [추가됨]
 }
