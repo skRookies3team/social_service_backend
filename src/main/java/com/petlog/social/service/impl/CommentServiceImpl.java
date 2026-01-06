@@ -59,7 +59,7 @@ public class CommentServiceImpl implements CommentService {
     public List<CommentResponse.CommentDto> getComments(Long feedId) {
         // 1. 부모 댓글(최상위 댓글)만 DB에서 조회
         // JPA의 @OneToMany 관계 설정을 통해 children은 Lazy Loading으로 가져옵니다.
-        List<Comment> comments = commentRepository.findAllByFeedIdAndParentIsNullOrderByCreatedAtDesc(feedId);
+        List<Comment> comments = commentRepository.findAllByFeedIdAndParentIsNullOrderByCreatedAtAsc(feedId);
 
         return comments.stream()
                 .map(comment -> {

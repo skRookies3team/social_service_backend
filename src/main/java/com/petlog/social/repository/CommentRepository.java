@@ -11,7 +11,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     // 1. [전체보기용] 특정 피드의 '최상위 댓글(부모가 없는 것)'만 모두 조회
     // 대댓글은 최상위 댓글의 children 필드를 통해 가져옵니다.
-    List<Comment> findAllByFeedIdAndParentIsNullOrderByCreatedAtDesc(Long feedId);
+    List<Comment> findAllByFeedIdAndParentIsNullOrderByCreatedAtAsc(Long feedId);
 
     // 2. [미리보기용] 특정 피드의 '최상위 댓글' 중 최신 3개만 조회 (Top3)
     List<Comment> findTop3ByFeedIdAndParentIsNullOrderByCreatedAtDesc(Long feedId);

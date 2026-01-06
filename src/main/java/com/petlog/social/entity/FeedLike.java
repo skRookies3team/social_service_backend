@@ -1,10 +1,7 @@
 package com.petlog.social.entity;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -13,36 +10,26 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
 @EntityListeners(AuditingEntityListener.class)
-@Table(
-        name = "feed_likes",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uk_feed_like_user_feed",
-                        columnNames = {"user_id", "feed_id"}
-                )
-        }
-)
+// [핵심] 한 유저(user_id)가 한 피드(feed_id)에 좋아요를 중복해서 넣을 수 없도록 제약 조건 설정
+@Table(name = "feed_likes", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_feed_like", columnNames = {"feed_id", "user_id"})
+})
 public class FeedLike {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "feed_id", nullable = false)
     private Feed feed;
 
-    @CreatedDate
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
-    @Builder
-    public FeedLike(Long userId, Feed feed) {
-        this.userId = userId;
-        this.feed = feed;
-    }
+    @CreatedDate
+    private LocalDateTime createdAt;
 }

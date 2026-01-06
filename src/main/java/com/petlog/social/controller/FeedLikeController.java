@@ -19,15 +19,15 @@ public class FeedLikeController {
 
     private final FeedLikeService feedLikeService;
 
-    // 좋아요 토글 API
+    // [수정] 좋아요 토글 API
     @PostMapping("/{feedId}/likes")
-    @Operation(summary = "좋아요 토글", description = "피드에 좋아요를 누르거나 취소합니다.")
-    public ResponseEntity<String> toggleLike(
+    @Operation(summary = "좋아요 토글", description = "피드에 좋아요를 누르거나 취소하고, 최신 상태와 개수를 반환합니다.")
+    public ResponseEntity<FeedLikeResponse.ToggleLikeResponse> toggleLike(
             @PathVariable Long feedId,
             @RequestParam Long userId
     ) {
-        boolean isLiked = feedLikeService.toggleLike(feedId, userId);
-        return ResponseEntity.ok(isLiked ? "좋아요를 눌렀습니다." : "좋아요를 취소했습니다.");
+        // [수정] 단순 문자열 대신 상태 객체 반환
+        return ResponseEntity.ok(feedLikeService.toggleLike(feedId, userId));
     }
 
     // 좋아요 누른 사람 목록 조회 API
