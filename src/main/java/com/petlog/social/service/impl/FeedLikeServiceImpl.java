@@ -11,6 +11,7 @@ import com.petlog.social.repository.FeedRepository;
 import com.petlog.social.service.FeedLikeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,22 +31,37 @@ public class FeedLikeServiceImpl implements FeedLikeService {
 
     @Override
     @Transactional
-    public boolean toggleLike(Long feedId, Long userId) {
+    public FeedLikeResponse.ToggleLikeResponse toggleLike(Long feedId, Long userId) {
         Feed feed = feedRepository.findById(feedId)
                 .orElseThrow(() -> new EntityNotFoundException("Feed", feedId));
 
         Optional<FeedLike> existingLike = feedLikeRepository.findByFeedAndUserId(feed, userId);
+        boolean isLiked;
 
         if (existingLike.isPresent()) {
+            // 이미 좋아요 상태 -> 취소
             feedLikeRepository.delete(existingLike.get());
-            return false;
+            isLiked = false;
         } else {
-            feedLikeRepository.save(FeedLike.builder().feed(feed).userId(userId).build());
-            return true;
+            // 좋아요 없음 -> 생성
+            try {
+                feedLikeRepository.save(FeedLike.builder().feed(feed).userId(userId).build());
+                isLiked = true;
+            } catch (DataIntegrityViolationException e) {
+                // [방어 코드] 동시에 요청이 들어와서 DB 제약 조건(Unique)에 걸린 경우
+                // 이미 좋아요가 눌린 상태로 간주하여 처리
+                log.warn("좋아요 중복 요청 감지 (FeedId: {}, UserId: {})", feedId, userId);
+                isLiked = true;
+            }
         }
+
+        // [중요] 변경 사항 즉시 반영 후 최신 개수 조회
+        feedLikeRepository.flush();
+        long currentCount = feedLikeRepository.countByFeed(feed);
+
+        return new FeedLikeResponse.ToggleLikeResponse(isLiked, currentCount);
     }
 
-    // 좋아요 누른 사람 목록 조회 (전체 공개)
     @Override
     public List<FeedLikeResponse.LikerDto> getLikers(Long feedId) {
         Feed feed = feedRepository.findById(feedId)
@@ -54,11 +70,15 @@ public class FeedLikeServiceImpl implements FeedLikeService {
         return feedLikeRepository.findAllByFeed(feed).stream()
                 .map(like -> {
                     String nickname = "Unknown";
+                    String profileImage = null;
+
                     try {
                         UserClientResponse userDto = userClient.getUser(like.getUserId());
                         if (userDto != null) {
-                            // [수정] getNickname() -> getUsername()
-                            nickname = userDto.getUsername();
+                            nickname = userDto.getUsername(); // 닉네임 필드명 확인 필요
+                            // [추가] 프로필 이미지 가져오기
+                            // UserClientResponse에 getProfileImage() 메소드가 있어야 합니다.
+                            profileImage = userDto.getProfileImage();
                         }
                     } catch (Exception e) {
                         log.warn("User Service Error: {}", e.getMessage());
@@ -67,6 +87,7 @@ public class FeedLikeServiceImpl implements FeedLikeService {
                     return FeedLikeResponse.LikerDto.builder()
                             .userId(like.getUserId())
                             .nickname(nickname)
+                            .profileImage(profileImage)
                             .build();
                 })
                 .collect(Collectors.toList());
